@@ -7,6 +7,7 @@ import deviceRoutes from './routes/deviceRoutes.js';
 import transferRoutes from './routes/transferRoutes.js';
 import vendorRoutes from './routes/vendorRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import ninRoutes from './routes/ninRoutes.js';
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use('/api/devices', deviceRoutes);
 app.use('/api/transfers', transferRoutes);
 app.use('/api/vendor', vendorRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/nin', ninRoutes);
 
 app.get('/', (req, res) => {
     res.send('TraceIt API is running...');

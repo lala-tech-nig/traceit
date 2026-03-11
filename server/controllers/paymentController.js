@@ -7,24 +7,25 @@ import axios from 'axios';
 // @access  Private
 export const verifyPayment = async (req, res) => {
     try {
-        const { transaction_id, tx_ref, amount, type } = req.body;
+        const { reference, amount, type } = req.body;
 
-        // Verify with Flutterwave (Mockable if no key provided yet)
+        // Verify with Paystack
         let paymentSuccess = false;
 
-        if (process.env.FLUTTERWAVE_SECRET_KEY) {
-            const response = await axios.get(`https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`, {
+        if (process.env.PAYSTACK_SECRET_KEY) {
+            const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
                 headers: {
-                    Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`
+                    Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
                 }
             });
 
-            const { status, amount: verifiedAmount } = response.data.data;
-            if (status === 'successful' && verifiedAmount >= amount) {
+            const { status, amount: verifiedAmount, currency } = response.data.data;
+            // Paystack returns amount in kobo, so compare against amount * 100
+            if (status === 'success' && verifiedAmount >= amount * 100 && currency === 'NGN') {
                 paymentSuccess = true;
             }
         } else {
-            // Mock payment success for testing since no API key might be set yet
+            // Mock payment success for testing (no key set)
             paymentSuccess = true;
         }
 
@@ -38,7 +39,7 @@ export const verifyPayment = async (req, res) => {
             amount,
             type,
             status: 'success',
-            reference: tx_ref
+            reference
         });
 
         // Handle specific logic based on type

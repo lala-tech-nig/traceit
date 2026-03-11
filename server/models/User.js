@@ -3,7 +3,9 @@ import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema(
     {
-        name: { type: String, required: true },
+        firstName: { type: String, required: true },
+        lastName: { type: String, required: true },
+        phoneNumber: { type: String, required: true },
         email: { type: String, required: true, unique: true },
         password: { type: String, required: true },
         role: {
@@ -11,14 +13,13 @@ const userSchema = new mongoose.Schema(
             enum: ['basic', 'technician', 'vendor', 'substore'],
             default: 'basic'
         },
-        image: { type: String }, // cloudinary url
-
-        // Vendor specific
-        mainVendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // If role is substore
-        substores: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // If role is vendor
+        image: { type: String, default: null }, // Cloudinary URL
+        nin: { type: String, default: null },
+        ninVerified: { type: Boolean, default: false },
+        parentVendor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // For substores
 
         // Subscription & limits
-        subscriptionExpiresAt: { type: Date },
+        subscriptionEnd: { type: Date, default: null },
         transferCount: { type: Number, default: 0 } // For technician (limit 20)
     },
     { timestamps: true }

@@ -66,8 +66,8 @@ export const updateDeviceStatus = async (req, res) => {
             return res.status(401).json({ message: 'Not authorized to update this device' });
         }
 
-        device.status = status || device.status;
-        device.statusComment = statusComment || device.statusComment;
+        if (status) device.status = status;
+        if (statusComment !== undefined) device.statusComment = statusComment;
 
         const updatedDevice = await device.save();
         res.json(updatedDevice);

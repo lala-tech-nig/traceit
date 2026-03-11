@@ -52,7 +52,7 @@ export default function DashboardPage() {
     return (
         <div className="max-w-6xl mx-auto space-y-8">
             <div>
-                <h1 className="text-3xl font-extrabold text-foreground mb-2">Welcome back, {user?.name.split(' ')[0]}</h1>
+                <h1 className="text-3xl font-extrabold text-foreground mb-2">Welcome back, {user?.firstName}</h1>
                 <p className="text-neutral-500 font-medium">Manage your devices, transfers, and account activities.</p>
             </div>
 

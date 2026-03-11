@@ -12,7 +12,7 @@ export default function SubStoresPage() {
 
     // Create state
     const [showCreateForm, setShowCreateForm] = useState(false);
-    const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+    const [formData, setFormData] = useState({ firstName: '', lastName: '', phoneNumber: '', email: '', password: '' });
     const [creating, setCreating] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
 
@@ -44,7 +44,9 @@ export default function SubStoresPage() {
         try {
             // Create substore by registering a new user with role substore and linking mainVendorId
             const registerData = new FormData();
-            registerData.append('name', formData.name);
+            registerData.append('firstName', formData.firstName);
+            registerData.append('lastName', formData.lastName);
+            registerData.append('phoneNumber', formData.phoneNumber);
             registerData.append('email', formData.email);
             registerData.append('password', formData.password);
             registerData.append('role', 'substore');
@@ -102,9 +104,24 @@ export default function SubStoresPage() {
                 <div className="bg-white border border-neutral-200 p-6 md:p-8 rounded-3xl shadow-sm mb-8">
                     <h2 className="text-xl font-bold text-foreground mb-6">Create a New Sub-Store</h2>
                     <form className="grid grid-cols-1 md:grid-cols-2 gap-6" onSubmit={handleCreate}>
+                        <div className="md:col-span-2 grid grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-semibold text-neutral-700 mb-1">Store First Name</label>
+                                <input required type="text" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} className="w-full px-4 py-3 border border-neutral-300 rounded-xl font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none" placeholder="First Name" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-neutral-700 mb-1">Store Last Name</label>
+                                <input required type="text" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} className="w-full px-4 py-3 border border-neutral-300 rounded-xl font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none" placeholder="Last Name" />
+                            </div>
+                        </div>
+                        <div className="md:col-span-2">
+                            <div className="bg-orange-50 text-orange-700 p-3 rounded-xl border border-orange-100 text-xs font-semibold">
+                                ⚠️ First Name and Last Name must match the NIN of the sub-store manager for verification.
+                            </div>
+                        </div>
                         <div>
-                            <label className="block text-sm font-semibold text-neutral-700 mb-1">Store Name</label>
-                            <input required type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-3 border border-neutral-300 rounded-xl font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none" placeholder="e.g. TraceIt Branch 1" />
+                            <label className="block text-sm font-semibold text-neutral-700 mb-1">Store Phone Number</label>
+                            <input required type="tel" value={formData.phoneNumber} onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })} className="w-full px-4 py-3 border border-neutral-300 rounded-xl font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none" placeholder="08012345678" />
                         </div>
                         <div>
                             <label className="block text-sm font-semibold text-neutral-700 mb-1">Store Email (Login ID)</label>
@@ -140,10 +157,10 @@ export default function SubStoresPage() {
                             <div key={store._id} className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-sm hover:shadow-md transition-shadow">
                                 <div className="flex items-center gap-4 mb-4">
                                     <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-bold text-xl">
-                                        {store.name.charAt(0)}
+                                        {store.firstName.charAt(0)}
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-foreground text-lg">{store.name}</h3>
+                                        <h3 className="font-bold text-foreground text-lg">{store.firstName} {store.lastName}</h3>
                                         <p className="text-sm text-neutral-500 font-medium">{store.email}</p>
                                     </div>
                                 </div>

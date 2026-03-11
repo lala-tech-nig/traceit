@@ -6,7 +6,7 @@ import generateToken from '../utils/generateToken.js';
 // @access  Public
 export const registerUser = async (req, res) => {
     try {
-        const { name, email, password, role, mainVendorId } = req.body;
+        const { firstName, lastName, phoneNumber, email, password, role, mainVendorId } = req.body;
 
         const userExists = await User.findOne({ email });
 
@@ -14,27 +14,39 @@ export const registerUser = async (req, res) => {
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        let imageUrl = '';
+        let imageUrl = null;
         if (req.file) {
-            imageUrl = req.file.path; // Cloudinary URL automatically returned
+            imageUrl = req.file.path;
+        }
+
+        // Role specific logic
+        let parentVendor = null;
+        if (role === 'substore') {
+            if (!mainVendorId) return res.status(400).json({ message: 'Main vendor must be specified for sub-stores' });
+            parentVendor = mainVendorId;
         }
 
         const user = await User.create({
-            name,
+            firstName,
+            lastName,
+            phoneNumber,
             email,
             password,
             role: role || 'basic',
             image: imageUrl,
-            mainVendorId: mainVendorId || undefined
+            parentVendor
         });
 
         if (user) {
             res.status(201).json({
                 _id: user._id,
-                name: user.name,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                phoneNumber: user.phoneNumber,
                 email: user.email,
                 role: user.role,
                 image: user.image,
+                ninVerified: user.ninVerified,
                 token: generateToken(user._id),
             });
         } else {
@@ -57,10 +69,14 @@ export const loginUser = async (req, res) => {
         if (user && (await user.matchPassword(password))) {
             res.json({
                 _id: user._id,
-                name: user.name,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                phoneNumber: user.phoneNumber,
                 email: user.email,
                 role: user.role,
                 image: user.image,
+                nin: user.nin,
+                ninVerified: user.ninVerified,
                 token: generateToken(user._id),
             });
         } else {
@@ -76,9 +92,20 @@ export const loginUser = async (req, res) => {
 // @access  Private
 export const getUserProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user._id).select('-password');
+        const user = await User.findById(req.user._id);
+
         if (user) {
-            res.json(user);
+            res.json({
+                _id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                phoneNumber: user.phoneNumber,
+                email: user.email,
+                role: user.role,
+                image: user.image,
+                nin: user.nin,
+                ninVerified: user.ninVerified
+            });
         } else {
             res.status(404).json({ message: 'User not found' });
         }

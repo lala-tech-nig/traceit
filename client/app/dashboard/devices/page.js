@@ -11,6 +11,11 @@ export default function DevicesPage() {
     const [loading, setLoading] = useState(true);
     const [showAddForm, setShowAddForm] = useState(false);
 
+    // Manage state
+    const [selectedDevice, setSelectedDevice] = useState(null);
+    const [manageForm, setManageForm] = useState({ status: '', comment: '' });
+    const [manageLoading, setManageLoading] = useState(false);
+
     // Form state
     const [formData, setFormData] = useState({
         name: '', brand: '', model: '', color: '', serialNumber: '', imei: ''
@@ -70,6 +75,26 @@ export default function DevicesPage() {
             });
         } finally {
             setAddLoading(false);
+        }
+    };
+
+    const handleManageSubmit = async (e) => {
+        e.preventDefault();
+        setManageLoading(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.put(`${API_URL}/devices/${selectedDevice._id}/status`, {
+                status: manageForm.status,
+                statusComment: manageForm.comment
+            }, config);
+
+            setMessage({ type: 'success', text: 'Device status updated successfully!' });
+            setSelectedDevice(null);
+            fetchDevices();
+        } catch (error) {
+            setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to update device' });
+        } finally {
+            setManageLoading(false);
         }
     };
 
@@ -174,19 +199,83 @@ export default function DevicesPage() {
                                             <span className="font-bold text-foreground font-mono">{device.imei}</span>
                                         </div>
                                     )}
+                                    {device.statusComment && (
+                                        <div className="mt-2 bg-neutral-50 p-3 rounded-lg border border-neutral-100 italic text-sm text-neutral-600">
+                                            "{device.statusComment}"
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="mt-6 pt-4 border-t border-neutral-100 flex justify-between items-center">
                                     <div className="flex items-center gap-2">
                                         {getStatusIcon(device.status)}
                                         <span className="text-sm font-bold capitalize text-foreground">{device.status}</span>
                                     </div>
-                                    <button className="text-primary font-bold text-sm hover:text-primary-dark transition-colors">
+                                    <button
+                                        onClick={() => {
+                                            setSelectedDevice(device);
+                                            setManageForm({ status: device.status, comment: '' });
+                                        }}
+                                        className="text-primary font-bold text-sm hover:text-primary-dark transition-colors"
+                                    >
                                         Manage
                                     </button>
                                 </div>
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Manage Modal */}
+            {selectedDevice && (
+                <div className="fixed inset-0 z-50 bg-neutral-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl">
+                        <h2 className="text-xl font-extrabold text-foreground mb-1">Manage Device</h2>
+                        <p className="text-sm text-neutral-500 font-medium mb-6">Update status and add comments for {selectedDevice.name}</p>
+
+                        <form onSubmit={handleManageSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-neutral-700 mb-1">Device Status</label>
+                                <select
+                                    className="w-full px-4 py-3 border border-neutral-300 rounded-xl font-medium focus:ring-2 focus:ring-primary outline-none"
+                                    value={manageForm.status}
+                                    onChange={(e) => setManageForm({ ...manageForm, status: e.target.value })}
+                                >
+                                    <option value="clean">Clean (No Issues)</option>
+                                    <option value="lost">Lost</option>
+                                    <option value="stolen">Stolen</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-neutral-700 mb-1">Add a Comment (Optional)</label>
+                                <textarea
+                                    rows={3}
+                                    className="w-full px-4 py-3 border border-neutral-300 rounded-xl font-medium focus:ring-2 focus:ring-primary outline-none resize-none"
+                                    placeholder="Explain why the status changed or add a note..."
+                                    value={manageForm.comment}
+                                    onChange={(e) => setManageForm({ ...manageForm, comment: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedDevice(null)}
+                                    className="flex-1 px-4 py-3 rounded-xl font-bold text-neutral-600 bg-neutral-100 hover:bg-neutral-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    disabled={manageLoading}
+                                    type="submit"
+                                    className="flex-1 px-4 py-3 rounded-xl font-bold text-white bg-primary hover:bg-primary-dark transition-colors disabled:opacity-70"
+                                >
+                                    {manageLoading ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
         </div>

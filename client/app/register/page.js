@@ -7,7 +7,9 @@ import { UploadCloud } from 'lucide-react';
 
 export default function RegisterPage() {
     const [formData, setFormData] = useState({
-        name: '',
+        firstName: '',
+        lastName: '',
+        phoneNumber: '',
         email: '',
         password: '',
         role: 'basic',
@@ -33,7 +35,9 @@ export default function RegisterPage() {
         setLoading(true);
 
         const data = new FormData();
-        data.append('name', formData.name);
+        data.append('firstName', formData.firstName);
+        data.append('lastName', formData.lastName);
+        data.append('phoneNumber', formData.phoneNumber);
         data.append('email', formData.email);
         data.append('password', formData.password);
         data.append('role', formData.role);
@@ -71,10 +75,30 @@ export default function RegisterPage() {
                             </div>
                         )}
 
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-neutral-700">Your Name</label>
+                                <div className="mt-1">
+                                    <input name="firstName" type="text" required onChange={handleChange} className="appearance-none block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all sm:text-sm font-medium" placeholder="John" />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-neutral-700">Last Name (Surname)</label>
+                                <div className="mt-1">
+                                    <input name="lastName" type="text" required onChange={handleChange} className="appearance-none block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all sm:text-sm font-medium" placeholder="Doe" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-orange-50 text-orange-700 p-3 rounded-xl border border-orange-100 text-xs font-semibold">
+                            ⚠️ Ensure your First Name and Surname exactly match the names on your National Identity Number (NIN). You will be required to verify your NIN after registration.
+                        </div>
+
                         <div>
-                            <label className="block text-sm font-semibold text-neutral-700">Full Name</label>
+                            <label className="block text-sm font-semibold text-neutral-700">Phone Number</label>
                             <div className="mt-1">
-                                <input name="name" type="text" required onChange={handleChange} className="appearance-none block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all sm:text-sm font-medium" placeholder="John Doe" />
+                                <input name="phoneNumber" type="tel" required onChange={handleChange} className="appearance-none block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all sm:text-sm font-medium" placeholder="08012345678" />
                             </div>
                         </div>
 

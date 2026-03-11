@@ -6,7 +6,7 @@ const paymentSchema = new mongoose.Schema(
         amount: { type: Number, required: true },
         type: {
             type: String,
-            enum: ['search', 'subscription', 'substore_creation', 'transfer'],
+            enum: ['search', 'subscription', 'substore_creation', 'transfer', 'nin_verification'],
             required: true
         },
         status: {
