@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
 import { payWithPaystack } from '@/lib/paystack';
-import { LayoutDashboard, Smartphone, ArrowLeftRight, LogOut, Store, BarChart3, ShieldAlert, CheckCircle2, Loader2, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Smartphone, ArrowLeftRight, LogOut, Store, BarChart3, ShieldAlert, CheckCircle2, Loader2, CreditCard, History } from 'lucide-react';
 
 export default function DashboardLayout({ children }) {
     const { user, loading, logout, API_URL, checkAndLoadUser } = useAuth();
@@ -108,6 +108,10 @@ export default function DashboardLayout({ children }) {
                     <Link href="/dashboard/transfers" className="flex items-center gap-3 px-4 py-3 rounded-xl text-neutral-600 hover:bg-neutral-50 hover:text-primary transition-colors font-medium">
                         <ArrowLeftRight className="w-5 h-5" />
                         Transfers
+                    </Link>
+                    <Link href="/dashboard/history" className="flex items-center gap-3 px-4 py-3 rounded-xl text-neutral-600 hover:bg-neutral-50 hover:text-primary transition-colors font-medium">
+                        <History className="w-5 h-5" />
+                        Device History
                     </Link>
 
                     {user.role === 'vendor' && (

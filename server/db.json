@@ -16,6 +16,22 @@
       "isApproved": false,
       "hasPaid": false,
       "transferCount": 0
+    },
+    {
+      "_id": "nr3gwytpmmxqfp39",
+      "createdAt": "2026-03-19T17:16:47.685Z",
+      "updatedAt": "2026-03-19T17:16:47.687Z",
+      "firstName": "Super",
+      "lastName": "Admin",
+      "email": "tech@traceit.com.ng",
+      "password": "$2b$10$s.svKZp.uBOGsa0t.XwhgeMA4/ZDz6AvhN7jCBYjTMoYbGxzyp/i6",
+      "phoneNumber": "00000000000",
+      "role": "admin",
+      "isApproved": true,
+      "ninVerified": true,
+      "hasPaid": true,
+      "image": null,
+      "transferCount": 0
     }
   ],
   "devices": [],

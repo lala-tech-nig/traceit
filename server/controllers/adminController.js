@@ -60,16 +60,15 @@ export const getAdminStats = async (req, res) => {
         ]);
 
         // Logs
-        const recentSearches = await SearchLog.find()
-            .populate('user', 'firstName lastName email')
-            .sort({ createdAt: -1 })
-            .limit(10);
+        const searchArr = await SearchLog.find();
+        const recentSearches = searchArr
+            .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 10);
 
-        const recentTransfers = await Transfer.find()
-            .populate('initiator', 'firstName lastName email')
-            .populate('device', 'name serialNumber')
-            .sort({ createdAt: -1 })
-            .limit(10);
+        const transferArr = await Transfer.find();
+        const recentTransfers = transferArr
+            .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 10);
 
         res.json({
             stats: {
@@ -103,9 +102,16 @@ export const getAllUsers = async (req, res) => {
         if (role) filter.role = role;
         if (isApproved) filter.isApproved = isApproved === 'true';
 
-        const users = await User.find(filter)
-            .select('-password')
-            .sort(sort);
+        const rawUsers = await User.find(filter);
+        let users = rawUsers.map(u => {
+            const userObj = { ...u };
+            delete userObj.password;
+            return userObj;
+        });
+
+        if (sort === '-createdAt') {
+            users.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        }
             
         res.json(users);
     } catch (error) {
@@ -118,7 +124,12 @@ export const getAllUsers = async (req, res) => {
 // @access  Private/Admin
 export const getPendingApprovals = async (req, res) => {
     try {
-        const users = await User.find({ hasPaid: true, isApproved: false }).select('-password');
+        const rawUsers = await User.find({ hasPaid: true, isApproved: false });
+        const users = rawUsers.map(u => {
+            const userObj = { ...u };
+            delete userObj.password;
+            return userObj;
+        });
         res.json(users);
     } catch (error) {
         res.status(500).json({ message: error.message });

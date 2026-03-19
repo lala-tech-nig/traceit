@@ -37,7 +37,12 @@ export const getSubstores = async (req, res) => {
             return res.status(403).json({ message: 'Only vendors can access substores' });
         }
 
-        const substores = await User.find({ mainVendorId: req.user._id, role: 'substore' }).select('-password');
+        const rawSubstores = await User.find({ mainVendorId: req.user._id, role: 'substore' });
+        const substores = rawSubstores.map(u => {
+            const userObj = { ...u };
+            delete userObj.password;
+            return userObj;
+        });
         res.json(substores);
     } catch (error) {
         res.status(500).json({ message: error.message });

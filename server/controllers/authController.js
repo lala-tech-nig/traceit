@@ -119,3 +119,20 @@ export const getUserProfile = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// @desc    Verify user by email
+// @route   GET /api/auth/verify-user
+// @access  Private
+export const verifyUserEmail = async (req, res) => {
+    try {
+        const { email } = req.query;
+        const user = await User.findOne({ email });
+        if (user) {
+            res.json({ firstName: user.firstName, lastName: user.lastName, email: user.email });
+        } else {
+            res.status(404).json({ message: 'Account with this email does not exist on the platform' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

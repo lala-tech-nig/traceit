@@ -3,7 +3,7 @@
 import { useAuth } from '@/context/AuthContext';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Smartphone, ArrowLeftRight, Activity, ShieldAlert, CreditCard, Fingerprint, ChevronRight, CheckCircle, Loader2, Search } from 'lucide-react';
+import { Smartphone, ArrowLeftRight, Activity, ShieldAlert, CreditCard, Fingerprint, ChevronRight, CheckCircle, Loader2, Search, History } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { payWithPaystack } from '@/lib/paystack';
 
@@ -314,9 +314,9 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 transition-all duration-500 ${isRestricted ? 'opacity-60 grayscale' : ''}`}>
+            <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 transition-all duration-500 ${isRestricted ? 'opacity-60 grayscale' : ''}`}>
                 <div className="bg-white border border-neutral-100 p-6 rounded-[2.5rem] shadow-sm flex items-center gap-5">
-                    <div className="w-14 h-14 bg-primary/10 text-primary flex items-center justify-center rounded-2xl">
+                    <div className="w-14 h-14 bg-primary/10 text-primary flex items-center justify-center rounded-2xl shrink-0">
                         <Smartphone className="w-7 h-7" />
                     </div>
                     <div>
@@ -326,7 +326,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="bg-white border border-neutral-100 p-6 rounded-[2.5rem] shadow-sm flex items-center gap-5">
-                    <div className="w-14 h-14 bg-blue-50 text-blue-600 flex items-center justify-center rounded-2xl">
+                    <div className="w-14 h-14 bg-blue-50 text-blue-600 flex items-center justify-center rounded-2xl shrink-0">
                         <ArrowLeftRight className="w-7 h-7" />
                     </div>
                     <div>
@@ -334,14 +334,24 @@ export default function DashboardPage() {
                         <p className="text-3xl font-extrabold text-foreground">{stats.incomingTransfers}</p>
                     </div>
                 </div>
+                
+                <button onClick={() => { if (!isRestricted) router.push('/dashboard/history') }} className="bg-white border border-neutral-100 p-6 rounded-[2.5rem] shadow-sm flex items-center gap-5 hover:border-primary/30 transition-all text-left group">
+                    <div className="w-14 h-14 bg-purple-50 text-purple-600 flex items-center justify-center rounded-2xl shrink-0 group-hover:bg-primary group-hover:text-white transition-all">
+                        <History className="w-7 h-7" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-neutral-500 mb-1 line-clamp-1">View History</p>
+                        <p className="text-lg font-extrabold text-foreground leading-tight">Device Log</p>
+                    </div>
+                </button>
 
                 <div className="bg-white border border-neutral-100 p-6 rounded-[2.5rem] shadow-sm flex items-center gap-5">
-                    <div className="w-14 h-14 bg-green-50 text-green-600 flex items-center justify-center rounded-2xl">
+                    <div className="w-14 h-14 bg-green-50 text-green-600 flex items-center justify-center rounded-2xl shrink-0">
                         <ShieldAlert className="w-7 h-7" />
                     </div>
                     <div>
-                        <p className="text-sm font-semibold text-neutral-500 mb-1">Account Status</p>
-                        <p className={`text-lg font-extrabold capitalize ${user?.isApproved ? 'text-green-600' : 'text-amber-600'}`}>
+                        <p className="text-sm font-semibold text-neutral-500 mb-1">Status</p>
+                        <p className={`text-sm font-extrabold capitalize leading-tight ${user?.isApproved ? 'text-green-600' : 'text-amber-600'}`}>
                             {user?.isApproved ? 'Fully Verified' : 'Awaiting Setup'}
                         </p>
                     </div>

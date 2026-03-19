@@ -1,5 +1,5 @@
 import express from 'express';
-import { addDevice, getMyDevices, updateDeviceStatus, searchDevice, publicSearchDevice } from '../controllers/deviceController.js';
+import { addDevice, getMyDevices, updateDeviceStatus, searchDevice, publicSearchDevice, getDeviceHistory } from '../controllers/deviceController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { upload } from '../config/cloudinary.js';
 
@@ -12,5 +12,6 @@ router.get('/mydevices', protect, getMyDevices);
 router.put('/:id/status', protect, updateDeviceStatus);
 router.get('/search/:identifier', protect, searchDevice);
 router.get('/public-search/:identifier', publicSearchDevice);
+router.get('/history', protect, getDeviceHistory);
 
 export default router;

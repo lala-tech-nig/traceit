@@ -196,3 +196,23 @@ export const publicSearchDevice = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// @desc    Get all historical devices for user
+// @route   GET /api/devices/history
+// @access  Private
+export const getDeviceHistory = async (req, res) => {
+    try {
+        const userId = req.user._id.toString();
+        const rawDevices = await Device.find();
+        
+        const historyDevices = rawDevices.filter(d => {
+            if (d.currentOwner === userId) return true;
+            if (d.history && d.history.some(h => (h.previousOwner === userId || h.newOwner === userId))) return true;
+            return false;
+        });
+        
+        res.json(historyDevices);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

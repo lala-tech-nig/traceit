@@ -100,13 +100,64 @@ export const acceptTransfer = async (req, res) => {
 // @access  Private
 export const getIncomingTransfers = async (req, res) => {
     try {
-        const transfers = await Transfer.find({
+        const rawTransfers = await Transfer.find({
             $or: [
                 { targetUser: req.user._id, status: 'pending' },
                 { targetUserEmail: req.user.email, status: 'pending' }
             ]
-        }).populate('device').populate('initiator', 'name email');
+        });
+        
+        // Manual populate because JsonDB doesn't do it automatically
+        const transfers = await Promise.all(rawTransfers.map(async (t) => {
+            const dev = await Device.findById(t.device);
+            const init = await User.findById(t.initiator);
+            return {
+                ...t,
+                device: dev ? { _id: dev._id, name: dev.name, serialNumber: dev.serialNumber } : null,
+                initiator: init ? { name: `${init.firstName} ${init.lastName}`, email: init.email } : null
+            };
+        }));
+        
         res.json(transfers);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get user's outgoing transfers
+// @route   GET /api/transfers/outgoing
+// @access  Private
+export const getOutgoingTransfers = async (req, res) => {
+    try {
+        const rawTransfers = await Transfer.find({ initiator: req.user._id, status: 'pending' });
+        
+        const transfers = await Promise.all(rawTransfers.map(async (t) => {
+            const dev = await Device.findById(t.device);
+            return {
+                ...t,
+                device: dev ? { _id: dev._id, name: dev.name, serialNumber: dev.serialNumber } : null,
+            };
+        }));
+        
+        res.json(transfers);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Cancel a pending transfer
+// @route   DELETE /api/transfers/:id/cancel
+// @access  Private
+export const cancelTransfer = async (req, res) => {
+    try {
+        const transfer = await Transfer.findById(req.params.id);
+        if (!transfer) return res.status(404).json({ message: 'Transfer not found' });
+        if (transfer.initiator.toString() !== req.user._id.toString()) return res.status(401).json({ message: 'Not authorized to cancel this transfer' });
+        if (transfer.status !== 'pending') return res.status(400).json({ message: 'Can only cancel pending transfers' });
+        
+        transfer.status = 'cancelled';
+        await transfer.save();
+        res.json({ message: 'Transfer cancelled successfully' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

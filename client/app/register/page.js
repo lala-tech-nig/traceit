@@ -123,6 +123,7 @@ export default function RegisterPage() {
                                     <option value="basic">Basic User</option>
                                     <option value="technician">Technician (₦5k/mo)</option>
                                     <option value="vendor">Vendor (₦10k/mo)</option>
+                                    <option value="organization">Organization</option>
                                 </select>
                             </div>
                         </div>
