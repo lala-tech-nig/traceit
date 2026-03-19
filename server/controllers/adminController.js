@@ -3,6 +3,13 @@ import Payment from '../models/Payment.js';
 import SearchLog from '../models/SearchLog.js';
 import Transfer from '../models/Transfer.js';
 import Device from '../models/Device.js';
+import AdmZip from 'adm-zip';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // @desc    Get Admin Statistics
 // @route   GET /api/admin/stats
@@ -177,5 +184,39 @@ export const confirmPayment = async (req, res) => {
         }
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Download System Backup (db.json and upload folder)
+// @route   GET /api/admin/backup
+// @access  Private/Admin
+export const downloadBackup = async (req, res) => {
+    try {
+        const zip = new AdmZip();
+        
+        // Use path.resolve to get the root dir consistently since we are in controllers folder
+        const rootDir = path.resolve(__dirname, '..');
+        
+        // Add db.json
+        const dbPath = path.join(rootDir, 'db.json');
+        if (fs.existsSync(dbPath)) {
+            zip.addLocalFile(dbPath);
+        }
+        
+        // Add upload folder
+        const uploadDir = path.join(rootDir, 'upload');
+        if (fs.existsSync(uploadDir)) {
+            zip.addLocalFolder(uploadDir, 'upload');
+        }
+        
+        const zipBuffer = await zip.toBufferPromise();
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        
+        res.set('Content-Type', 'application/zip');
+        res.set('Content-Disposition', `attachment; filename=traceit-backup-${timestamp}.zip`);
+        res.send(zipBuffer);
+    } catch (error) {
+        console.error('Backup generation failed:', error);
+        res.status(500).json({ message: 'Backup generation failed: ' + error.message });
     }
 };

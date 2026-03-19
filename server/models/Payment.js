@@ -1,23 +1,34 @@
-import mongoose from 'mongoose';
+import JsonDB from '../utils/jsonDb.js';
 
-const paymentSchema = new mongoose.Schema(
-    {
-        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-        amount: { type: Number, required: true },
-        type: {
-            type: String,
-            enum: ['search', 'subscription', 'substore_creation', 'transfer', 'nin_verification'],
-            required: true
-        },
-        status: {
-            type: String,
-            enum: ['pending', 'success', 'failed'],
-            default: 'pending'
-        },
-        reference: { type: String, required: true, unique: true } // Flutterwave tx_ref
+const db = new JsonDB('payments');
+
+const Payment = {
+    async create(data) {
+        data.status = data.status || 'pending';
+        return db.create(data);
     },
-    { timestamps: true }
-);
+    
+    async find(query) {
+        const results = await db.find(query);
+        results.populate = function() { return this; };
+        return results;
+    },
 
-const Payment = mongoose.model('Payment', paymentSchema);
+    async findOne(query) {
+        return db.findOne(query);
+    },
+
+    async findById(id) {
+        return db.findById(id);
+    },
+    
+    async findByIdAndUpdate(id, data, options) {
+        return db.findByIdAndUpdate(id, data, options);
+    },
+
+    async updateMany(query, data) {
+        return db.updateMany(query, data);
+    }
+};
+
 export default Payment;

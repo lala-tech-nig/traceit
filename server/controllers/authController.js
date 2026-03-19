@@ -16,7 +16,7 @@ export const registerUser = async (req, res) => {
 
         let imageUrl = null;
         if (req.file) {
-            imageUrl = req.file.path;
+            imageUrl = `${req.protocol}://${req.get('host')}/upload/${req.file.filename}`;
         }
 
         // Role specific logic

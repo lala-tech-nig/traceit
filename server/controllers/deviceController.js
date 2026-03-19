@@ -32,7 +32,7 @@ export const addDevice = async (req, res) => {
 
         let deviceImage = '';
         if (req.file) {
-            deviceImage = req.file.path;
+            deviceImage = `${req.protocol}://${req.get('host')}/upload/${req.file.filename}`;
         }
 
         // Parse specs if it comes as a string (from FormData)

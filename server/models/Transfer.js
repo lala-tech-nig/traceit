@@ -1,20 +1,36 @@
-import mongoose from 'mongoose';
+import JsonDB from '../utils/jsonDb.js';
 
-const transferSchema = new mongoose.Schema(
-    {
-        device: { type: mongoose.Schema.Types.ObjectId, ref: 'Device', required: true },
-        initiator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-        targetUserEmail: { type: String, required: true }, // Before the target accepts, we just know their email
-        targetUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Populated once accepted/found
-        status: {
-            type: String,
-            enum: ['pending', 'accepted', 'rejected', 'cancelled'],
-            default: 'pending'
-        },
-        comment: { type: String, required: true }
+const db = new JsonDB('transfers');
+
+const Transfer = {
+    async create(data) {
+        data.status = data.status || 'pending';
+        return db.create(data);
     },
-    { timestamps: true }
-);
+    
+    async find(query) {
+        const results = await db.find(query);
+        results.populate = function() { return this; };
+        // Add fake sort support because controllers might chain .sort
+        results.sort = function() { return this; };
+        return results;
+    },
 
-const Transfer = mongoose.model('Transfer', transferSchema);
+    async findOne(query) {
+        return db.findOne(query);
+    },
+
+    async findById(id) {
+        return db.findById(id);
+    },
+    
+    async findByIdAndUpdate(id, data, options) {
+        return db.findByIdAndUpdate(id, data, options);
+    },
+
+    async updateMany(query, data) {
+        return db.updateMany(query, data);
+    }
+};
+
 export default Transfer;

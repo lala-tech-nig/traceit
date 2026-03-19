@@ -1,45 +1,58 @@
-import mongoose from 'mongoose';
+import JsonDB from '../utils/jsonDb.js';
 import bcrypt from 'bcryptjs';
 
-const userSchema = new mongoose.Schema(
-    {
-        firstName: { type: String, required: true },
-        lastName: { type: String, required: true },
-        phoneNumber: { type: String, required: true },
-        email: { type: String, required: true, unique: true },
-        password: { type: String, required: true },
-        role: {
-            type: String,
-            enum: ['basic', 'technician', 'vendor', 'substore', 'admin'],
-            default: 'basic'
-        },
-        image: { type: String, default: null }, // Cloudinary URL
-        nin: { type: String, default: null },
-        ninVerified: { type: Boolean, default: false },
-        isApproved: { type: Boolean, default: false }, // Admin approval
-        hasPaid: { type: Boolean, default: false },    // Payment for verification
-        verificationSubmittedAt: { type: Date, default: null },
-        parentVendor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // For substores
+const db = new JsonDB('users');
 
-        // Subscription & limits
-        subscriptionEnd: { type: Date, default: null },
-        transferCount: { type: Number, default: 0 } // For technician (limit 20)
+function attachMethods(user) {
+    if (!user) return null;
+    
+    user.matchPassword = async function(enteredPassword) {
+        return await bcrypt.compare(enteredPassword, this.password);
+    };
+    return user;
+}
+
+const User = {
+    async create(data) {
+        if (data.password) {
+            const salt = await bcrypt.genSalt(10);
+            data.password = await bcrypt.hash(data.password, salt);
+        }
+        
+        data.role = data.role || 'basic';
+        data.image = data.image || null;
+        data.ninVerified = data.ninVerified || false;
+        data.isApproved = data.isApproved || false;
+        data.hasPaid = data.hasPaid || false;
+        data.transferCount = data.transferCount || 0;
+        
+        const user = await db.create(data);
+        return attachMethods(user);
     },
-    { timestamps: true }
-);
+    
+    async find(query) {
+        const users = await db.find(query);
+        return users.map(u => attachMethods(u));
+    },
 
-// Password hashing
-userSchema.pre('save', async function () {
-    if (!this.isModified('password')) {
-        return;
+    async findOne(query) {
+        const user = await db.findOne(query);
+        return attachMethods(user);
+    },
+
+    async findById(id) {
+        const user = await db.findById(id);
+        return attachMethods(user);
+    },
+    
+    async findByIdAndUpdate(id, data, options) {
+        const updated = await db.findByIdAndUpdate(id, data, options);
+        return attachMethods(updated);
+    },
+
+    async updateMany(query, data) {
+        return db.updateMany(query, data);
     }
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-});
-
-userSchema.methods.matchPassword = async function (enteredPassword) {
-    return await bcrypt.compare(enteredPassword, this.password);
 };
 
-const User = mongoose.model('User', userSchema);
 export default User;

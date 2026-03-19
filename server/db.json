@@ -1,0 +1,25 @@
+{
+  "users": [
+    {
+      "_id": "6ho7ox18mmxqa9kl",
+      "createdAt": "2026-03-19T17:12:34.293Z",
+      "updatedAt": "2026-03-19T17:12:34.294Z",
+      "firstName": "Shamsudeen",
+      "lastName": "Olaniyan",
+      "phoneNumber": "08121444306",
+      "email": "Olaniyanshamsudeenyinka001@gmail.com",
+      "password": "$2b$10$6ZCNt34LKcRhZPVmTVKxSetXULng0Bvlq3OwWDy3EaUgos8jZ1do.",
+      "role": "basic",
+      "image": "http://localhost:5000/upload/1773940354068-445383200.png",
+      "parentVendor": null,
+      "ninVerified": false,
+      "isApproved": false,
+      "hasPaid": false,
+      "transferCount": 0
+    }
+  ],
+  "devices": [],
+  "transfers": [],
+  "payments": [],
+  "searchLogs": []
+}

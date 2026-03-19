@@ -1,34 +1,39 @@
-import mongoose from 'mongoose';
+import JsonDB from '../utils/jsonDb.js';
 
-const historySchema = new mongoose.Schema({
-    previousOwner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    newOwner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    transferDate: { type: Date, default: Date.now },
-    comment: { type: String }
-});
+const db = new JsonDB('devices');
 
-const deviceSchema = new mongoose.Schema(
-    {
-        name: { type: String, required: true },
-        brand: { type: String, required: true },
-        model: { type: String, required: true },
-        color: { type: String, required: true },
-        serialNumber: { type: String, required: true, unique: true },
-        imei: { type: String, unique: true, sparse: true }, // Not all devices have IMEI
-        status: {
-            type: String,
-            enum: ['clean', 'stolen', 'lost', 'damaged'],
-            default: 'clean'
-        },
-        statusComment: { type: String },
-        category: { type: String, required: true },
-        specs: { type: mongoose.Schema.Types.Mixed }, // Store category-specific fields
-        currentOwner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-        history: [historySchema],
-        deviceImage: { type: String } // Image of the device itself if needed
+const Device = {
+    async create(data) {
+        data.history = data.history || [];
+        data.status = data.status || 'clean';
+        return db.create(data);
     },
-    { timestamps: true, strict: false } // strict: false allows for varied specs
-);
+    
+    async find(query) {
+        const results = await db.find(query);
+        // Add fake populate support because controllers chain `.populate()`
+        results.populate = function() { return this; };
+        return results;
+    },
 
-const Device = mongoose.model('Device', deviceSchema);
+    async findOne(query) {
+        const result = await db.findOne(query);
+        return result;
+    },
+
+    async findById(id) {
+        const result = await db.findById(id);
+        return result;
+    },
+    
+    async findByIdAndUpdate(id, data, options) {
+        const result = await db.findByIdAndUpdate(id, data, options);
+        return result;
+    },
+
+    async updateMany(query, data) {
+        return db.updateMany(query, data);
+    }
+};
+
 export default Device;

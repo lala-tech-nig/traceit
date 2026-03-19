@@ -6,7 +6,8 @@ import {
     submitNIN, 
     confirmPayment,
     getAdminStats,
-    getAllUsers
+    getAllUsers,
+    downloadBackup
 } from '../controllers/adminController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
@@ -19,4 +20,6 @@ router.get('/stats', protect, admin, getAdminStats);
 router.get('/users', protect, admin, getAllUsers);
 router.get('/pending', protect, admin, getPendingApprovals);
 router.put('/approve/:id', protect, admin, approveUser);
+router.get('/backup', protect, admin, downloadBackup);
+
 export default router;

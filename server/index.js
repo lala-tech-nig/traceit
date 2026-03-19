@@ -2,6 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import authRoutes from './routes/authRoutes.js';
 import deviceRoutes from './routes/deviceRoutes.js';
 import transferRoutes from './routes/transferRoutes.js';
@@ -17,6 +22,7 @@ app.use(express.json());
 app.use(cors());
 
 // Routes
+app.use('/upload', express.static(path.join(__dirname, 'upload')));
 app.use('/api/auth', authRoutes);
 app.use('/api/devices', deviceRoutes);
 app.use('/api/transfers', transferRoutes);

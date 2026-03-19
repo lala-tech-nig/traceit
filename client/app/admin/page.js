@@ -21,7 +21,8 @@ import {
     SearchCode,
     Smartphone,
     ArrowUpDown,
-    Filter
+    Filter,
+    Download
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -110,6 +111,27 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleDownloadBackup = async () => {
+        try {
+            setMessage({ type: 'success', text: 'Preparing backup download...' });
+            const response = await axios.get(`${API_URL}/admin/backup`, {
+                headers: { Authorization: `Bearer ${user.token}` },
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `traceit-backup-${new Date().toISOString().slice(0,10)}.zip`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setMessage({ type: 'success', text: 'Backup downloaded successfully!' });
+        } catch (error) {
+            console.error(error);
+            setMessage({ type: 'error', text: 'Failed to download backup. Please check console.' });
+        }
+    };
+
     const handleSort = (key) => {
         setSortConfig(prev => ({
             key,
@@ -130,6 +152,13 @@ export default function AdminDashboard() {
                     <p className="text-neutral-500 font-medium">Platform overview, financial tracking, and account management.</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button 
+                        onClick={handleDownloadBackup}
+                        className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-white border border-amber-600 rounded-2xl font-bold hover:bg-amber-600 transition-all text-sm shadow-md shadow-amber-500/20"
+                    >
+                        <Download className="w-4 h-4" />
+                        Download Backup
+                    </button>
                     <button 
                         onClick={() => activeTab === 'accounts' ? fetchAllUsers() : fetchData()}
                         className="flex items-center gap-2 px-6 py-3 bg-white border border-neutral-200 rounded-2xl font-bold hover:bg-neutral-50 transition-all text-sm"
