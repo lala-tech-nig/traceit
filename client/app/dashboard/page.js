@@ -196,7 +196,7 @@ export default function DashboardPage() {
                     <h1 className="text-3xl font-extrabold text-foreground mb-2">Welcome back, {user?.firstName}</h1>
                     <p className="text-neutral-500 font-medium">Manage your devices, transfers, and account activities.</p>
                 </div>
-                {!user?.isApproved && (
+                {!user?.isApproved && !user?.hasPaid && (
                     <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 p-2 pr-4 rounded-2xl">
                         <div className="w-10 h-10 bg-amber-100 text-amber-600 flex items-center justify-center rounded-xl">
                             <ShieldAlert className="w-5 h-5" />
@@ -359,31 +359,44 @@ export default function DashboardPage() {
             </div>
 
             {isRestricted ? (
-                <div className="bg-white border border-neutral-200 rounded-[3rem] p-10 md:p-16 text-center shadow-xl relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-blue-500 to-primary"></div>
-                    <div className="w-24 h-24 bg-neutral-50 text-neutral-300 flex items-center justify-center rounded-3xl mx-auto mb-8">
-                        <ShieldAlert className="w-12 h-12" />
+                user?.hasPaid ? (
+                    <div className="bg-white border border-neutral-200 rounded-[3rem] p-10 md:p-16 text-center shadow-xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-blue-500 to-primary animate-pulse"></div>
+                        <div className="w-24 h-24 bg-primary/10 text-primary flex items-center justify-center rounded-3xl mx-auto mb-8 animate-pulse">
+                            <Activity className="w-12 h-12" />
+                        </div>
+                        <h2 className="text-4xl font-black text-foreground mb-4">Awaiting Admin Approval</h2>
+                        <p className="text-neutral-500 max-w-xl mx-auto font-medium text-lg leading-relaxed mb-6">
+                            Your NIN identity detail and verification payment have been successfully received. You will gain full access to the device registry and transfers as soon as a super admin reviews and approves your account.
+                        </p>
                     </div>
-                    <h2 className="text-4xl font-black text-foreground mb-4">Complete Your Profile</h2>
-                    <p className="text-neutral-500 max-w-xl mx-auto font-medium text-lg leading-relaxed mb-10">
-                        To maintain a secure ecosystem, we requires all users to verify their identity with a National Identity Number (NIN) before accessing the device registry and transfer features.
-                    </p>
-                    <button 
-                        onClick={() => setShowVerifyModal(true)}
-                        className="bg-primary text-white font-black px-12 py-5 rounded-2xl hover:bg-primary-dark transition-all shadow-xl shadow-primary/25 text-lg hover:-translate-y-1 active:scale-95"
-                    >
-                        Start Identity Verification
-                    </button>
-                    
-                    <div className="mt-12 pt-8 border-t border-neutral-100 grid grid-cols-2 md:grid-cols-4 gap-4 opacity-40">
-                        {['Add Devices', 'Track Gadgets', 'Transfer Ownership', 'View History'].map(feat => (
-                            <div key={feat} className="flex items-center justify-center gap-2 text-sm font-bold">
-                                <CheckCircle className="w-4 h-4" />
-                                {feat}
-                            </div>
-                        ))}
+                ) : (
+                    <div className="bg-white border border-neutral-200 rounded-[3rem] p-10 md:p-16 text-center shadow-xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-blue-500 to-primary"></div>
+                        <div className="w-24 h-24 bg-neutral-50 text-neutral-300 flex items-center justify-center rounded-3xl mx-auto mb-8">
+                            <ShieldAlert className="w-12 h-12" />
+                        </div>
+                        <h2 className="text-4xl font-black text-foreground mb-4">Complete Your Profile</h2>
+                        <p className="text-neutral-500 max-w-xl mx-auto font-medium text-lg leading-relaxed mb-10">
+                            To maintain a secure ecosystem, we requires all users to verify their identity with a National Identity Number (NIN) before accessing the device registry and transfer features.
+                        </p>
+                        <button 
+                            onClick={() => setShowVerifyModal(true)}
+                            className="bg-primary text-white font-black px-12 py-5 rounded-2xl hover:bg-primary-dark transition-all shadow-xl shadow-primary/25 text-lg hover:-translate-y-1 active:scale-95"
+                        >
+                            Start Identity Verification
+                        </button>
+                        
+                        <div className="mt-12 pt-8 border-t border-neutral-100 grid grid-cols-2 md:grid-cols-4 gap-4 opacity-40">
+                            {['Add Devices', 'Track Gadgets', 'Transfer Ownership', 'View History'].map(feat => (
+                                <div key={feat} className="flex items-center justify-center gap-2 text-sm font-bold">
+                                    <CheckCircle className="w-4 h-4" />
+                                    {feat}
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )
             ) : (
                 <>
                     {user?.role === 'vendor' && (

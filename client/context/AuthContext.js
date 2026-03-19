@@ -20,6 +20,36 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, []);
 
+    const checkAndLoadUser = async (overrideUser = user) => {
+        if (!overrideUser) return;
+        try {
+            const { data } = await axios.get(`${API_URL}/auth/profile`, {
+                headers: { Authorization: `Bearer ${overrideUser.token}` }
+            });
+            if (data) {
+                const isChanged = data.isApproved !== overrideUser.isApproved || data.hasPaid !== overrideUser.hasPaid;
+                if (isChanged) {
+                    const updatedUser = { ...overrideUser, ...data };
+                    setUser(updatedUser);
+                    localStorage.setItem('traceit_user', JSON.stringify(updatedUser));
+                }
+            }
+        } catch (error) {
+            console.error("Auto refresh failed", error);
+        }
+    };
+
+    // Background polling for status updates
+    useEffect(() => {
+        let interval;
+        if (user) {
+            interval = setInterval(() => {
+                checkAndLoadUser(user);
+            }, 10000); // 10 seconds
+        }
+        return () => clearInterval(interval);
+    }, [user, API_URL]);
+
     const login = async (email, password) => {
         try {
             const { data } = await axios.post(`${API_URL}/auth/login`, { email, password });
@@ -67,7 +97,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading, API_URL }}>
+        <AuthContext.Provider value={{ user, login, register, logout, loading, API_URL, checkAndLoadUser }}>
             {children}
         </AuthContext.Provider>
     );

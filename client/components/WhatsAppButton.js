@@ -62,6 +62,13 @@ export default function WhatsAppButton() {
                     flex-direction: column;
                     align-items: flex-end;
                     gap: 10px;
+                    transition: bottom 0.3s ease;
+                }
+
+                @media (max-width: 768px) {
+                    .whatsapp-wrapper {
+                        bottom: 110px; /* Lifted above the new mobile bottom nav */
+                    }
                 }
 
                 .whatsapp-btn {

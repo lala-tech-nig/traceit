@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "prod": "pm2 start ecosystem.config.cjs",
+    "stop": "pm2 stop all",
+    "logs": "pm2 logs"
   },
   "keywords": [],
   "author": "LALA TECH",
@@ -23,6 +26,7 @@
     "mongoose": "^9.2.4",
     "multer": "^2.1.1",
     "multer-storage-cloudinary": "^4.0.0",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "pm2": "^5.4.3"
   }
 }
