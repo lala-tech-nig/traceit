@@ -47,6 +47,8 @@ export const registerUser = async (req, res) => {
                 role: user.role,
                 image: user.image,
                 ninVerified: user.ninVerified,
+                isApproved: user.isApproved,
+                hasPaid: user.hasPaid,
                 token: generateToken(user._id),
             });
         } else {
@@ -77,6 +79,8 @@ export const loginUser = async (req, res) => {
                 image: user.image,
                 nin: user.nin,
                 ninVerified: user.ninVerified,
+                isApproved: user.isApproved,
+                hasPaid: user.hasPaid,
                 token: generateToken(user._id),
             });
         } else {
@@ -104,7 +108,9 @@ export const getUserProfile = async (req, res) => {
                 role: user.role,
                 image: user.image,
                 nin: user.nin,
-                ninVerified: user.ninVerified
+                ninVerified: user.ninVerified,
+                isApproved: user.isApproved,
+                hasPaid: user.hasPaid
             });
         } else {
             res.status(404).json({ message: 'User not found' });

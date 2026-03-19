@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from '@/context/AuthContext';
-import { BarChart3, TrendingUp, Devices, ArrowLeftRight, Clock } from 'lucide-react';
+import { BarChart3, TrendingUp, Devices, ArrowLeftRight, Clock, Store, CheckCircle2 } from 'lucide-react';
 
 export default function ReportsPage() {
     const { user } = useAuth();
@@ -95,9 +95,4 @@ export default function ReportsPage() {
             </div>
         </div>
     );
-
-    // Missing lucide-react import fix
-    function CheckCircle2(props) {
-        return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-    }
 }

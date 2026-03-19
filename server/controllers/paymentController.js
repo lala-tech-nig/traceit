@@ -47,9 +47,14 @@ export const verifyPayment = async (req, res) => {
 
         if (type === 'subscription' || type === 'substore_creation') {
             // Add 30 days
-            const currentDate = user.subscriptionExpiresAt > Date.now() ? user.subscriptionExpiresAt : new Date();
+            const currentDate = user.subscriptionEnd > Date.now() ? user.subscriptionEnd : new Date();
             currentDate.setDate(currentDate.getDate() + 30);
-            user.subscriptionExpiresAt = currentDate;
+            user.subscriptionEnd = currentDate;
+            await user.save();
+        }
+
+        if (type === 'nin_verification') {
+            user.hasPaid = true;
             await user.save();
         }
 

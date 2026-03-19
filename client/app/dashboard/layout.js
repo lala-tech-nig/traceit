@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
 import { payWithPaystack } from '@/lib/paystack';
-import { LayoutDashboard, Smartphone, ArrowLeftRight, LogOut, Store, BarChart3, ShieldAlert, CheckCircle2, Loader2 } from 'lucide-react';
+import { LayoutDashboard, Smartphone, ArrowLeftRight, LogOut, Store, BarChart3, ShieldAlert, CheckCircle2, Loader2, CreditCard } from 'lucide-react';
 
 export default function DashboardLayout({ children }) {
     const { user, loading, logout, API_URL, checkAndLoadUser } = useAuth();
@@ -121,11 +121,31 @@ export default function DashboardLayout({ children }) {
                                 <BarChart3 className="w-5 h-5" />
                                 Reports
                             </Link>
+                            <Link href="/dashboard/subscription" className="flex items-center gap-3 px-4 py-3 rounded-xl text-primary bg-primary/5 hover:bg-primary/10 transition-all font-bold">
+                                <CreditCard className="w-5 h-5" />
+                                Subscription
+                            </Link>
+                        </>
+                    )}
+
+                    {user.role === 'admin' && (
+                        <>
+                            <div className="pt-4 pb-2 px-4 text-xs font-bold text-primary uppercase tracking-wider">Super Admin</div>
+                            <Link href="/admin" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-all font-bold">
+                                <ShieldAlert className="w-5 h-5" />
+                                Admin Panel
+                            </Link>
                         </>
                     )}
 
                     {user.role === 'technician' && (
-                        <div className="pt-4 pb-2 px-4 text-xs font-bold text-primary uppercase tracking-wider">Technician Pro</div>
+                        <>
+                            <div className="pt-4 pb-2 px-4 text-xs font-bold text-primary uppercase tracking-wider">Technician Pro</div>
+                            <Link href="/dashboard/subscription" className="flex items-center gap-3 px-4 py-3 rounded-xl text-primary bg-primary/5 hover:bg-primary/10 transition-all font-bold">
+                                <CreditCard className="w-5 h-5" />
+                                Subscription
+                            </Link>
+                        </>
                     )}
                 </div>
 
@@ -167,79 +187,6 @@ export default function DashboardLayout({ children }) {
                 </header>
 
                 <div className="flex-1 overflow-y-auto p-6 md:p-8 relative">
-                    {(!user.ninVerified) && (
-                        <div className="absolute inset-0 z-50 bg-neutral-900/50 backdrop-blur-md flex items-center justify-center p-4">
-                            <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl relative">
-                                <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center border-4 border-white shadow-sm">
-                                    <ShieldAlert className="w-6 h-6" />
-                                </div>
-                                <h2 className="text-2xl font-extrabold text-center mt-4 mb-2">Mandatory Identity Verification</h2>
-                                <p className="text-neutral-600 text-center font-medium mb-6">
-                                    For security and trust on the platform, you must verify your identity before performing any tasks (adding devices, transfers, etc).
-                                </p>
-
-                                <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200 mb-6">
-                                    <h4 className="font-bold text-sm mb-2 text-neutral-800">Your Registered Info:</h4>
-                                    <p className="text-sm"><strong>First Name:</strong> {user.firstName}</p>
-                                    <p className="text-sm"><strong>Surname:</strong> {user.lastName}</p>
-                                    <p className="text-xs text-orange-600 font-semibold mt-2">These names must exactly match your NIN details.</p>
-                                </div>
-
-                                {ninMessage.text && (
-                                    <div className={`p-3 mb-6 rounded-xl font-medium text-sm ${ninMessage.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                                        {ninMessage.text}
-                                    </div>
-                                )}
-
-                                <form onSubmit={handleVerifyNIN} className="space-y-4">
-                                    {!paymentDone ? (
-                                        <div className="text-center">
-                                            <p className="text-sm font-semibold text-neutral-700 mb-4">A standard verification fee of ₦500 applies.</p>
-                                            <button
-                                                type="button"
-                                                disabled={paymentLoading}
-                                                onClick={handlePayment}
-                                                className="w-full bg-foreground text-white px-6 py-4 rounded-xl font-bold hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
-                                            >
-                                                {paymentLoading ? (
-                                                    <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</>
-                                                ) : (
-                                                    'Pay ₦500 Verification Fee'
-                                                )}
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div className="flex items-center gap-2 mb-2 justify-center text-green-600 font-bold bg-green-50 py-2 rounded-lg">
-                                                <CheckCircle2 className="w-5 h-5" /> Payment Successful
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-neutral-700 mb-1">Enter your 11-Digit NIN Number</label>
-                                                <input
-                                                    required
-                                                    type="text"
-                                                    value={ninValue}
-                                                    onChange={(e) => setNinValue(e.target.value)}
-                                                    className="w-full px-4 py-3 border border-neutral-300 rounded-xl font-medium focus:ring-2 focus:ring-primary outline-none"
-                                                    placeholder="e.g. 12345678901"
-                                                    minLength={11}
-                                                    maxLength={11}
-                                                />
-                                            </div>
-                                            <button
-                                                disabled={ninLoading}
-                                                type="submit"
-                                                className="w-full bg-primary text-white px-6 py-4 rounded-xl font-bold hover:bg-primary-dark transition-colors disabled:opacity-70 mt-2"
-                                            >
-                                                {ninLoading ? 'Verifying...' : 'Validate NIN Identity'}
-                                            </button>
-                                        </>
-                                    )}
-                                </form>
-                            </div>
-                        </div>
-                    )}
-
                     {children}
                 </div>
             </main>

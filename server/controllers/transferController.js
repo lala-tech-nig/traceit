@@ -7,6 +7,9 @@ import User from '../models/User.js';
 // @access  Private
 export const initiateTransfer = async (req, res) => {
     try {
+        if (!req.user.isApproved) {
+            return res.status(403).json({ message: 'Account not approved. Please complete identity verification to initiate transfers.' });
+        }
         const { deviceId, targetUserEmail, comment } = req.body;
 
         const device = await Device.findById(deviceId);
@@ -45,6 +48,9 @@ export const initiateTransfer = async (req, res) => {
 // @access  Private
 export const acceptTransfer = async (req, res) => {
     try {
+        if (!req.user.isApproved) {
+            return res.status(403).json({ message: 'Account not approved. Please complete identity verification to accept transfers.' });
+        }
         const transfer = await Transfer.findById(req.params.id);
 
         if (!transfer) {

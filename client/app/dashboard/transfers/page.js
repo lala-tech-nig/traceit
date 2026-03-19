@@ -3,7 +3,7 @@
 import { useAuth } from '@/context/AuthContext';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { ArrowLeftRight, Check, X, Send } from 'lucide-react';
+import { ArrowLeftRight, Check, X, Send, Smartphone } from 'lucide-react';
 
 export default function TransfersPage() {
     const { user, API_URL } = useAuth();

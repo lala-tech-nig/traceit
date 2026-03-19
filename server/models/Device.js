@@ -21,11 +21,13 @@ const deviceSchema = new mongoose.Schema(
             default: 'clean'
         },
         statusComment: { type: String },
+        category: { type: String, required: true },
+        specs: { type: mongoose.Schema.Types.Mixed }, // Store category-specific fields
         currentOwner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
         history: [historySchema],
         deviceImage: { type: String } // Image of the device itself if needed
     },
-    { timestamps: true }
+    { timestamps: true, strict: false } // strict: false allows for varied specs
 );
 
 const Device = mongoose.model('Device', deviceSchema);

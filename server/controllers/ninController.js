@@ -31,7 +31,7 @@ export const verifyNIN = async (req, res) => {
                 body: JSON.stringify({ number: ninNumber })
             };
 
-            const everifyRes = await fetch('https://everify.com.ng/api/nin/', fetchConfig);
+            const everifyRes = await fetch('https://everify.com.ng/api/nin-v2/', fetchConfig);
 
             // Check if it's a non-200 response early to get exact error text before JSON parse fails
             if (!everifyRes.ok) {

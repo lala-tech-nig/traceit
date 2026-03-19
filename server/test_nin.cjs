@@ -3,7 +3,7 @@ const https = require('https');
 const data = JSON.stringify({ number: "12345678901" });
 
 const options = {
-    hostname: 'api.everify.com.ng',
+    hostname: 'https://everify.com.ng/api/nin-v2/',
     port: 443,
     path: '/nin/',
     method: 'POST',

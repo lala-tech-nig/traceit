@@ -15,24 +15,32 @@ const protect = async (req, res, next) => {
 
             req.user = await User.findById(decoded.id).select('-password');
 
-            next();
+            return next();
         } catch (error) {
             console.error(error);
-            res.status(401).json({ message: 'Not authorized, token failed' });
+            return res.status(401).json({ message: 'Not authorized, token failed' });
         }
     }
 
     if (!token) {
-        res.status(401).json({ message: 'Not authorized, no token' });
+        return res.status(401).json({ message: 'Not authorized, no token' });
     }
 };
 
 const vendorOrTechOnly = (req, res, next) => {
     if (req.user && (req.user.role === 'vendor' || req.user.role === 'technician')) {
-        next();
+        return next();
     } else {
-        res.status(403).json({ message: 'Not authorized as a vendor or technician' });
+        return res.status(403).json({ message: 'Not authorized as a vendor or technician' });
     }
 };
 
-export { protect, vendorOrTechOnly };
+const admin = (req, res, next) => {
+    if (req.user && req.user.role === 'admin') {
+        return next();
+    } else {
+        return res.status(403).json({ message: 'Not authorized as an admin' });
+    }
+};
+
+export { protect, vendorOrTechOnly, admin };

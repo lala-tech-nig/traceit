@@ -1,24 +1,48 @@
 import Device from '../models/Device.js';
 import User from '../models/User.js';
+import Payment from '../models/Payment.js';
+import SearchLog from '../models/SearchLog.js';
 
 // @desc    Add a new device
 // @route   POST /api/devices
 // @access  Private
 export const addDevice = async (req, res) => {
     try {
-        const { name, brand, model, color, serialNumber, imei } = req.body;
+        if (!req.user.isApproved) {
+            return res.status(403).json({ message: 'Account not approved. Please complete identity verification to add devices.' });
+        }
+
+        let { name, brand, model, color, serialNumber, imei, category, specs } = req.body;
+
+        // Ensure imei is a string if it comes as an array
+        if (Array.isArray(imei)) {
+            imei = imei.find(i => i !== '') || '';
+        }
 
         const deviceExists = await Device.findOne({
-            $or: [{ serialNumber }, { imei }]
+            $or: [{ serialNumber }, { imei: imei || 'none-provided' }]
         });
 
-        if (deviceExists) {
-            return res.status(400).json({ message: 'Device with this Serial Number or IMEI already exists' });
+        if (deviceExists && (serialNumber || imei)) {
+            // Only block if it's a real conflict (IMEI is optional)
+            if (deviceExists.serialNumber === serialNumber || (imei && deviceExists.imei === imei)) {
+                return res.status(400).json({ message: 'Device with this Serial Number or IMEI already exists' });
+            }
         }
 
         let deviceImage = '';
         if (req.file) {
             deviceImage = req.file.path;
+        }
+
+        // Parse specs if it comes as a string (from FormData)
+        let parsedSpecs = specs;
+        if (typeof specs === 'string') {
+            try {
+                parsedSpecs = JSON.parse(specs);
+            } catch (e) {
+                parsedSpecs = {};
+            }
         }
 
         const device = await Device.create({
@@ -28,6 +52,8 @@ export const addDevice = async (req, res) => {
             color,
             serialNumber,
             imei,
+            category,
+            specs: parsedSpecs,
             currentOwner: req.user._id,
             deviceImage
         });
@@ -55,6 +81,9 @@ export const getMyDevices = async (req, res) => {
 // @access  Private
 export const updateDeviceStatus = async (req, res) => {
     try {
+        if (!req.user.isApproved) {
+            return res.status(403).json({ message: 'Account not approved. Please complete identity verification to manage devices.' });
+        }
         const { status, statusComment } = req.body;
         const device = await Device.findById(req.params.id);
 
@@ -81,22 +110,65 @@ export const updateDeviceStatus = async (req, res) => {
 // @access  Private
 export const searchDevice = async (req, res) => {
     try {
-        // Note: Payment validation should pre-flight this or be checked here.
-        // Assuming middleware or client has validated payment token for 'basic' users.
         const identifier = req.params.identifier;
+        const { paymentRef } = req.query;
+
+        // Security & Payment Check
+        let isAuthorized = false;
+
+        if (req.user.role === 'admin') {
+            isAuthorized = true;
+        } else if (req.user.role === 'basic') {
+            if (paymentRef) {
+                const payment = await Payment.findOne({
+                    reference: paymentRef,
+                    user: req.user._id,
+                    type: 'search',
+                    status: 'success'
+                });
+                if (payment) isAuthorized = true;
+            }
+        } else {
+            // technician, vendor, substore
+            if (req.user.subscriptionEnd && new Date(req.user.subscriptionEnd) > new Date()) {
+                isAuthorized = true;
+            }
+        }
+
+        if (!isAuthorized) {
+            return res.status(402).json({ 
+                message: req.user.role === 'basic' 
+                    ? 'Payment required for this search' 
+                    : 'Active subscription required. Please renew your plan.',
+                requiresPayment: true 
+            });
+        }
+
         const device = await Device.findOne({
             $or: [{ serialNumber: identifier }, { imei: identifier }]
-        }).populate('currentOwner', 'name email image role')
-            .populate('history.previousOwner', 'name email')
-            .populate('history.newOwner', 'name email');
+        }).populate('currentOwner', 'firstName lastName email image role')
+            .populate('history.previousOwner', 'firstName lastName email')
+            .populate('history.newOwner', 'firstName lastName email');
 
         if (!device) {
+            await SearchLog.create({
+                user: req.user._id,
+                query: identifier,
+                found: false
+            });
             return res.status(404).json({ message: 'Device not found' });
         }
 
         // Blurred response logic happens on client if they haven't paid, OR we can restrict here based on a query param 'paid=true'
         // To ensure security, if user is 'basic' we must check if they have a successful payment block
         // For now, we return the device if authenticated. Frontend handles blurred view before firing search (or we require a paymentRef).
+
+        await SearchLog.create({
+            user: req.user._id,
+            query: identifier,
+            found: true,
+            device: device._id
+        });
 
         res.json(device);
     } catch (error) {
