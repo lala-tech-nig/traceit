@@ -21,6 +21,11 @@ const Device = {
         return result;
     },
 
+    async countDocuments(query) {
+        const results = await db.find(query || {});
+        return results.length;
+    },
+
     async findById(id) {
         const result = await db.findById(id);
         return result;

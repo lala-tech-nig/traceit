@@ -24,40 +24,36 @@ export const getAdminStats = async (req, res) => {
         startOfWeek.setHours(0, 0, 0, 0);
 
         // Accounts
-        const totalUsers = await User.countDocuments();
-        const activeAccounts = await User.countDocuments({ isApproved: true });
-        const newAccountsToday = await User.countDocuments({ createdAt: { $gte: startOfDay } });
-        const verifiedAccounts = await User.countDocuments({ ninVerified: true });
+        const allUsers = await User.find();
+        const totalUsers = allUsers.length;
+        const activeAccounts = allUsers.filter(u => u.isApproved).length;
+        const newAccountsToday = allUsers.filter(u => new Date(u.createdAt) >= startOfDay).length;
+        const verifiedAccounts = allUsers.filter(u => u.ninVerified).length;
 
         // Payments
-        const paymentsToday = await Payment.find({ createdAt: { $gte: startOfDay }, status: 'success' });
+        const allPayments = await Payment.find({ status: 'success' });
+        const paymentsToday = allPayments.filter(p => new Date(p.createdAt) >= startOfDay);
         const dailyRevenue = paymentsToday.reduce((acc, curr) => acc + curr.amount, 0);
 
-        const paymentsWeek = await Payment.find({ createdAt: { $gte: startOfWeek }, status: 'success' });
+        const paymentsWeek = allPayments.filter(p => new Date(p.createdAt) >= startOfWeek);
         const weeklyRevenue = paymentsWeek.reduce((acc, curr) => acc + curr.amount, 0);
 
         // Devices
-        const totalDevices = await Device.countDocuments();
-        const devicesToday = await Device.countDocuments({ createdAt: { $gte: startOfDay } });
-        const devicesWeek = await Device.countDocuments({ createdAt: { $gte: startOfWeek } });
+        const allDevices = await Device.find();
+        const totalDevices = allDevices.length;
+        const devicesToday = allDevices.filter(d => new Date(d.createdAt) >= startOfDay).length;
+        const devicesWeek = allDevices.filter(d => new Date(d.createdAt) >= startOfWeek).length;
 
         // Device Category Breakdown
-        const categoryBreakdown = await Device.aggregate([
-            {
-                $group: {
-                    _id: '$category',
-                    count: { $sum: 1 }
-                }
-            },
-            {
-                $project: {
-                    category: '$_id',
-                    count: 1,
-                    _id: 0
-                }
-            },
-            { $sort: { count: -1 } }
-        ]);
+        const categoryMap = {};
+        allDevices.forEach(d => {
+            const cat = d.category || 'Unknown';
+            categoryMap[cat] = (categoryMap[cat] || 0) + 1;
+        });
+        const categoryBreakdown = Object.keys(categoryMap).map(cat => ({ 
+            category: cat, 
+            count: categoryMap[cat] 
+        })).sort((a,b) => b.count - a.count);
 
         // Logs
         const searchArr = await SearchLog.find();

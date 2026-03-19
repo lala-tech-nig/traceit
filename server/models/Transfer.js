@@ -20,6 +20,11 @@ const Transfer = {
         return db.findOne(query);
     },
 
+    async countDocuments(query) {
+        const results = await db.find(query || {});
+        return results.length;
+    },
+
     async findById(id) {
         return db.findById(id);
     },

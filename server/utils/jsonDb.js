@@ -119,23 +119,22 @@ class JsonDB {
     }
 
     _toDocument(item) {
-        return {
-            ...item,
-            save: async () => {
-                const db = await this._read();
-                const index = db[this.collectionName].findIndex(i => i._id === item._id);
-                if (index !== -1) {
-                    item.updatedAt = new Date().toISOString();
-                    // Clean up the save method before saving to JSON so it doesn't try to serialize it
-                    const docToSave = { ...item };
-                    delete docToSave.save;
-                    db[this.collectionName][index] = docToSave;
-                    await this._write(db);
-                    return this._toDocument(docToSave);
-                }
-                return null;
+        const doc = { ...item };
+        doc.save = async () => {
+            const db = await this._read();
+            const index = db[this.collectionName].findIndex(i => i._id === doc._id);
+            if (index !== -1) {
+                doc.updatedAt = new Date().toISOString();
+                // Clean up the save method before saving to JSON so it doesn't try to serialize it
+                const docToSave = { ...doc };
+                delete docToSave.save;
+                db[this.collectionName][index] = docToSave;
+                await this._write(db);
+                return this._toDocument(docToSave);
             }
+            return null;
         };
+        return doc;
     }
 }
 

@@ -3,7 +3,7 @@
     {
       "_id": "6ho7ox18mmxqa9kl",
       "createdAt": "2026-03-19T17:12:34.293Z",
-      "updatedAt": "2026-03-19T17:12:34.294Z",
+      "updatedAt": "2026-03-19T18:59:09.202Z",
       "firstName": "Shamsudeen",
       "lastName": "Olaniyan",
       "phoneNumber": "08121444306",
@@ -12,9 +12,9 @@
       "role": "basic",
       "image": "http://localhost:5000/upload/1773940354068-445383200.png",
       "parentVendor": null,
-      "ninVerified": false,
-      "isApproved": false,
-      "hasPaid": false,
+      "ninVerified": true,
+      "isApproved": true,
+      "hasPaid": true,
       "transferCount": 0
     },
     {
@@ -36,6 +36,27 @@
   ],
   "devices": [],
   "transfers": [],
-  "payments": [],
+  "payments": [
+    {
+      "_id": "4s1e89akmmxtoq2z",
+      "createdAt": "2026-03-19T18:47:47.723Z",
+      "updatedAt": "2026-03-19T18:47:47.723Z",
+      "user": "6ho7ox18mmxqa9kl",
+      "amount": 500,
+      "type": "nin_verification",
+      "status": "success",
+      "reference": "traceit-nin-6ho7ox18mmxqa9kl-1773946017232"
+    },
+    {
+      "_id": "95z9vu89mmxtui7c",
+      "createdAt": "2026-03-19T18:52:17.448Z",
+      "updatedAt": "2026-03-19T18:52:17.448Z",
+      "user": "6ho7ox18mmxqa9kl",
+      "amount": 500,
+      "type": "nin_verification",
+      "status": "success",
+      "reference": "traceit-nin-6ho7ox18mmxqa9kl-1773946261368"
+    }
+  ],
   "searchLogs": []
 }
