@@ -1,5 +1,5 @@
 import express from 'express';
-import { createAd, updateAd, toggleAdStatus, getAdminAds, getActiveAds } from '../controllers/adController.js';
+import { createAd, updateAd, toggleAdStatus, getAdminAds, getActiveAds, deleteAd } from '../controllers/adController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 import { upload } from '../config/cloudinary.js';
 
@@ -11,7 +11,8 @@ router.route('/')
 
 router.route('/:id')
     .put(protect, admin, upload.single('mediaUrl'), updateAd)
-    .patch(protect, admin, toggleAdStatus);
+    .patch(protect, admin, toggleAdStatus)
+    .delete(protect, admin, deleteAd);
 
 router.get('/public/active', protect, getActiveAds);
 

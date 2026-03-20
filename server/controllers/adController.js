@@ -15,7 +15,7 @@ export const createAd = async (req, res) => {
 
         let mediaUrl = '';
         if (req.file) {
-            mediaUrl = `${req.protocol}://${req.get('host')}/upload/${req.file.filename}`;
+            mediaUrl = req.file.path;
         }
 
         const ad = await Ad.create({
@@ -59,7 +59,7 @@ export const updateAd = async (req, res) => {
         }
 
         if (req.file) {
-            ad.mediaUrl = `${req.protocol}://${req.get('host')}/upload/${req.file.filename}`;
+            ad.mediaUrl = req.file.path;
         }
 
         await ad.save();
@@ -107,6 +107,18 @@ export const getActiveAds = async (req, res) => {
             ]
         });
         res.json(activeAds);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const deleteAd = async (req, res) => {
+    try {
+        const ad = await Ad.findById(req.params.id);
+        if (!ad) return res.status(404).json({ message: 'Ad not found' });
+
+        await Ad.deleteOne({ _id: ad._id });
+        res.json({ message: 'Ad deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

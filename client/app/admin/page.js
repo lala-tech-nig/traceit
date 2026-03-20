@@ -27,7 +27,8 @@ import {
     ShieldAlert,
     PlusCircle,
     Edit3,
-    ImageIcon
+    ImageIcon,
+    Trash
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -55,7 +56,8 @@ export default function AdminDashboard() {
         targetRoles: ['all'], actionType: 'whatsapp', actionUrl: '', 
         startDate: new Date().toISOString().split('T')[0], 
         endDate: new Date(Date.now() + 7*86400000).toISOString().split('T')[0],
-        media: null
+        media: null,
+        mediaPreview: null
     });
 
     const [reports, setReports] = useState([]);
@@ -149,7 +151,8 @@ export default function AdminDashboard() {
             targetRoles: ['all'], actionType: 'whatsapp', actionUrl: '', 
             startDate: new Date().toISOString().split('T')[0], 
             endDate: new Date(Date.now() + 7*86400000).toISOString().split('T')[0],
-            media: null
+            media: null,
+            mediaPreview: null
         });
         setEditingAdId(null);
     };
@@ -157,11 +160,12 @@ export default function AdminDashboard() {
     const handleOpenAdModal = (ad = null) => {
         if (ad) {
             setAdForm({
-                title: ad.title, description: ad.description, type: ad.type,
+                title: ad.title, description: ad.description, type: ad.type || 'dashboard_banner',
                 targetRoles: ad.targetRoles, actionType: ad.actionType, actionUrl: ad.actionUrl,
                 startDate: new Date(ad.startDate).toISOString().split('T')[0],
                 endDate: new Date(ad.endDate).toISOString().split('T')[0],
-                media: null
+                media: null,
+                mediaPreview: ad.mediaUrl || null
             });
             setEditingAdId(ad._id);
         } else {
@@ -201,6 +205,20 @@ export default function AdminDashboard() {
         } catch (error) {
             setMessage({ type: 'error', text: 'Failed to broadcast ad.' });
         } finally {
+            setAdsLoading(false);
+        }
+    };
+
+    const handleDeleteAd = async (id) => {
+        if (!window.confirm("Are you sure you want to permanently delete this ad campaign?")) return;
+        setAdsLoading(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.delete(`${API_URL}/ads/${id}`, config);
+            fetchAds();
+        } catch (error) {
+            console.error(error);
+            alert("Failed to delete ad");
             setAdsLoading(false);
         }
     };
@@ -706,7 +724,7 @@ export default function AdminDashboard() {
                                             </td>
                                             <td className="px-8 py-5">
                                                 <p className="text-xs font-bold text-neutral-600 uppercase tracking-wider mb-1">
-                                                    {ad.type.replace('_', ' ')}
+                                                    {(ad.type || 'dashboard_banner').replace('_', ' ')}
                                                 </p>
                                                 <div className="flex flex-wrap gap-1">
                                                     {ad.targetRoles.map((r, i) => (
@@ -728,9 +746,12 @@ export default function AdminDashboard() {
                                                     {ad.isActive ? 'Active (Click to Pause)' : 'Paused (Click to Start)'}
                                                 </button>
                                             </td>
-                                            <td className="px-8 py-5 text-right">
-                                                <button onClick={() => handleOpenAdModal(ad)} className="p-2 text-neutral-400 hover:text-primary transition-colors hover:bg-primary/5 rounded-lg inline-flex">
+                                            <td className="px-8 py-5 text-right whitespace-nowrap">
+                                                <button onClick={() => handleOpenAdModal(ad)} className="p-2 text-neutral-400 hover:text-primary transition-colors hover:bg-primary/5 rounded-lg inline-flex mr-1">
                                                     <Edit3 className="w-4 h-4" />
+                                                </button>
+                                                <button onClick={() => handleDeleteAd(ad._id)} className="p-2 text-neutral-400 hover:text-red-500 transition-colors hover:bg-red-50 rounded-lg inline-flex">
+                                                    <Trash className="w-4 h-4" />
                                                 </button>
                                             </td>
                                         </tr>
@@ -742,92 +763,152 @@ export default function AdminDashboard() {
                 </div>
             )}
             
-            {/* Modal for Ad Campaign */}
             {showAdModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/20 backdrop-blur-sm">
-                    <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-                        <div className="flex justify-between items-center mb-8">
-                            <div>
-                                <h3 className="text-2xl font-black text-foreground">{editingAdId ? 'Edit Campaign' : 'Launch New Campaign'}</h3>
-                                <p className="text-sm font-medium text-neutral-500 mt-1">Configure your ad delivery, targeting, and media.</p>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-md">
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-5xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 overflow-hidden flex flex-col md:flex-row max-h-[90vh]">
+                        {/* Left Side: Media Upload Preview */}
+                        <div className="md:w-5/12 bg-neutral-50/50 border-r border-neutral-100 p-8 flex flex-col relative overflow-y-auto hidden md:flex">
+                            <div className="mb-6">
+                                <h3 className="text-xl font-black text-foreground">Media Assets</h3>
+                                <p className="text-xs font-medium text-neutral-500 mt-1 pb-4 border-b border-neutral-200/60">Upload the visual component for banners or popups.</p>
                             </div>
-                            <button onClick={() => setShowAdModal(false)} className="p-2 bg-neutral-100 text-neutral-500 rounded-full hover:bg-neutral-200 transition-colors">
-                                <XCircle className="w-5 h-5" />
-                            </button>
-                        </div>
-                        
-                        <form onSubmit={handleSaveAd} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="md:col-span-2">
-                                    <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">Campaign Title</label>
-                                    <input required type="text" value={adForm.title} onChange={e => setAdForm({...adForm, title: e.target.value})} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">Description</label>
-                                    <textarea required rows={2} value={adForm.description} onChange={e => setAdForm({...adForm, description: e.target.value})} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none" />
-                                </div>
-                                
-                                <div>
-                                    <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">Ad Type / Location</label>
-                                    <select value={adForm.type} onChange={e => setAdForm({...adForm, type: e.target.value})} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer">
-                                        <option value="dashboard_banner">Dashboard Banner (Carousel)</option>
-                                        <option value="text_slider">Top Notice Bar (Text Marquee)</option>
-                                        <option value="popup_modal">Session Popup Modal (Center)</option>
-                                    </select>
-                                </div>
-                                
-                                <div>
-                                    <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">Target Audience Roles</label>
-                                    <select multiple value={adForm.targetRoles} onChange={e => {
-                                        const values = Array.from(e.target.selectedOptions, option => option.value);
-                                        setAdForm({...adForm, targetRoles: values.includes('all') ? ['all'] : values});
-                                    }} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer h-14">
-                                        <option value="all">Everyone</option>
-                                        <option value="basic">Basic Users</option>
-                                        <option value="technician">Technicians</option>
-                                        <option value="vendor">Vendors</option>
-                                        <option value="substore">Sub-Stores</option>
-                                    </select>
-                                    <p className="text-[10px] text-neutral-400 mt-1">Hold Ctrl/Cmd to select multiple</p>
-                                </div>
 
-                                <div>
-                                    <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">Action Type</label>
-                                    <select value={adForm.actionType} onChange={e => setAdForm({...adForm, actionType: e.target.value})} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer">
-                                        <option value="whatsapp">WhatsApp Direct Chat</option>
-                                        <option value="website">External Website Link</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">Action URL</label>
-                                    <input required type="url" value={adForm.actionUrl} onChange={e => setAdForm({...adForm, actionUrl: e.target.value})} placeholder={adForm.actionType === 'whatsapp' ? 'https://wa.me/...' : 'https://...'} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">Start Date</label>
-                                    <input required type="date" value={adForm.startDate} onChange={e => setAdForm({...adForm, startDate: e.target.value})} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">End Date</label>
-                                    <input required type="date" value={adForm.endDate} min={adForm.startDate} onChange={e => setAdForm({...adForm, endDate: e.target.value})} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
-                                </div>
-
-                                {adForm.type !== 'text_slider' && (
-                                    <div className="md:col-span-2">
-                                        <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">Media Upload (Banner/Popup Image)</label>
-                                        <input type="file" accept="image/*,video/*" onChange={e => setAdForm({...adForm, media: e.target.files[0]})} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-primary/10 file:text-primary hover:file:bg-primary/20" />
+                            <label className="flex-1 min-h-[250px] border-2 border-dashed border-neutral-300 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all text-center p-6 relative overflow-hidden group">
+                                {adForm.mediaPreview ? (
+                                    <img src={adForm.mediaPreview} alt="Preview" className="absolute inset-0 w-full h-full object-cover group-hover:opacity-60 transition-opacity" />
+                                ) : (
+                                    <div className="flex flex-col items-center text-neutral-400 group-hover:text-primary transition-colors">
+                                        <div className="w-16 h-16 bg-white shadow-sm rounded-full flex items-center justify-center mb-4 text-neutral-300 group-hover:scale-110 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                                            <ImageIcon className="w-8 h-8" />
+                                        </div>
+                                        <span className="font-bold text-sm tracking-wide">Click to Upload Media</span>
+                                        <span className="text-[10px] font-semibold opacity-60 mt-1 uppercase tracking-wider">PNG, JPG (Max 10MB)</span>
                                     </div>
                                 )}
+                                <input 
+                                    type="file" 
+                                    accept="image/*,video/*" 
+                                    className="hidden" 
+                                    onChange={e => {
+                                        const file = e.target.files[0];
+                                        if (file) {
+                                            setAdForm({...adForm, media: file, mediaPreview: URL.createObjectURL(file)});
+                                        }
+                                    }} 
+                                />
+                                {adForm.mediaPreview && (
+                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <span className="bg-white text-black font-bold text-xs px-4 py-2 rounded-full shadow-lg">Change Media</span>
+                                    </div>
+                                )}
+                            </label>
+
+                            {adForm.type === 'text_slider' && (
+                                <div className="absolute inset-0 bg-neutral-100/90 backdrop-blur-md z-10 flex flex-col items-center justify-center p-8 text-center pt-20">
+                                    <div className="w-20 h-20 bg-white shadow-sm text-neutral-400 rounded-full flex items-center justify-center mb-4">
+                                        <Megaphone className="w-10 h-10" />
+                                    </div>
+                                    <p className="font-black text-lg text-foreground">Media Disabled</p>
+                                    <p className="text-xs font-medium text-neutral-500 mt-2 max-w-[200px]">Text Sliders are pure text broadcasts running across the top bar.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Right Side: Form Configuration */}
+                        <div className="md:w-7/12 p-8 md:p-10 flex flex-col bg-white overflow-y-auto relative">
+                            <button onClick={() => setShowAdModal(false)} className="absolute top-8 right-8 p-2 bg-neutral-50 border border-neutral-100 text-neutral-400 rounded-full hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all z-10">
+                                <XCircle className="w-5 h-5" />
+                            </button>
+                            
+                            <div className="mb-8 pr-12">
+                                <h3 className="text-3xl font-black text-foreground tracking-tight">{editingAdId ? 'Edit Campaign' : 'Launch Campaign'}</h3>
+                                <p className="text-xs font-bold text-neutral-400 mt-2 uppercase tracking-widest">Configure details, targeting & links</p>
                             </div>
 
-                            <button 
-                                disabled={adsLoading}
-                                type="submit"
-                                className="w-full mt-4 bg-primary text-white font-black py-4 rounded-xl hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50"
-                            >
-                                {adsLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : editingAdId ? 'Update Campaign' : 'Launch Campaign'}
-                            </button>
-                        </form>
+                            <form onSubmit={handleSaveAd} className="space-y-6 flex-1 flex flex-col">
+                                <div className="space-y-6 flex-1">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2 px-1">Campaign Type</label>
+                                            <div className="relative">
+                                                <select value={adForm.type} onChange={e => setAdForm({...adForm, type: e.target.value})} className="w-full pl-4 pr-10 py-3.5 bg-neutral-50 border border-neutral-200/60 rounded-2xl font-bold text-sm focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all cursor-pointer appearance-none">
+                                                    <option value="dashboard_banner">Dashboard Banner (Carousel)</option>
+                                                    <option value="text_slider">Top Notice Bar (Text Marquee)</option>
+                                                    <option value="popup_modal">Session Popup Modal (Center)</option>
+                                                </select>
+                                                <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none rotate-90" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2 px-1">Target Audience</label>
+                                            <div className="relative">
+                                                <select value={adForm.targetRoles[0] || 'all'} onChange={e => setAdForm({...adForm, targetRoles: [e.target.value]})} className="w-full pl-4 pr-10 py-3.5 bg-neutral-50 border border-neutral-200/60 rounded-2xl font-bold text-sm focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all cursor-pointer appearance-none">
+                                                    <option value="all">Everyone (Global)</option>
+                                                    <option value="basic">Basic Users</option>
+                                                    <option value="technician">Technicians</option>
+                                                    <option value="vendor">Vendors</option>
+                                                    <option value="substore">Sub-Stores</option>
+                                                </select>
+                                                <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none rotate-90" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2 px-1">Campaign Headline</label>
+                                        <input required type="text" value={adForm.title} onChange={e => setAdForm({...adForm, title: e.target.value})} placeholder="Main attractive title..." className="w-full px-5 py-3.5 bg-neutral-50 border border-neutral-200/60 rounded-2xl font-bold text-sm focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all placeholder:font-medium placeholder:text-neutral-300" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2 px-1">Sub-description</label>
+                                        <textarea required rows={2} value={adForm.description} onChange={e => setAdForm({...adForm, description: e.target.value})} placeholder="Catchy details..." className="w-full px-5 py-3.5 bg-neutral-50 border border-neutral-200/60 rounded-2xl font-medium text-sm focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all resize-none placeholder:text-neutral-300" />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2 px-1">Action Type</label>
+                                            <div className="relative">
+                                                <select value={adForm.actionType} onChange={e => setAdForm({...adForm, actionType: e.target.value})} className="w-full pl-4 pr-10 py-3.5 bg-neutral-50 border border-neutral-200/60 rounded-2xl font-bold text-sm focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all cursor-pointer appearance-none">
+                                                    <option value="whatsapp">WhatsApp Directed</option>
+                                                    <option value="website">External Link</option>
+                                                </select>
+                                                <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none rotate-90" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2 px-1">Action URL</label>
+                                            <input required type="url" value={adForm.actionUrl} onChange={e => setAdForm({...adForm, actionUrl: e.target.value})} placeholder={adForm.actionType === 'whatsapp' ? 'https://wa.me/...' : 'https://...'} className="w-full px-5 py-3.5 bg-neutral-50 border border-neutral-200/60 rounded-2xl font-bold text-sm focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all text-primary" />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2 px-1">Schedule Start Date</label>
+                                            <input required type="date" value={adForm.startDate} onChange={e => setAdForm({...adForm, startDate: e.target.value})} className="w-full px-5 py-3.5 bg-neutral-50 border border-neutral-200/60 rounded-2xl font-bold text-sm text-neutral-700 focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2 px-1">Schedule End Date</label>
+                                            <input required type="date" value={adForm.endDate} min={adForm.startDate} onChange={e => setAdForm({...adForm, endDate: e.target.value})} className="w-full px-5 py-3.5 bg-neutral-50 border border-neutral-200/60 rounded-2xl font-bold text-sm text-neutral-700 focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all" />
+                                        </div>
+                                    </div>
+
+                                    {/* Mobile Only: Simple Media Input (if screen is small) */}
+                                    {adForm.type !== 'text_slider' && (
+                                        <div className="md:hidden pt-4 border-t border-neutral-100">
+                                            <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2 px-1">Media Upload (Banner/Popup)</label>
+                                            <input type="file" accept="image/*,video/*" onChange={e => setAdForm({...adForm, media: e.target.files[0]})} className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200/60 rounded-2xl font-bold text-sm focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all file:mr-4 file:py-1.5 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:uppercase file:tracking-wider file:font-black file:bg-primary/10 file:text-primary" />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button 
+                                    disabled={adsLoading}
+                                    type="submit"
+                                    className="w-full mt-8 bg-neutral-900 text-white font-black py-4 rounded-2xl hover:bg-black transition-all shadow-xl shadow-black/20 flex items-center justify-center gap-3 disabled:opacity-50 text-[15px] hover:-translate-y-1 active:scale-[0.98]"
+                                >
+                                    {adsLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : editingAdId ? 'Update Campaign Details' : 'Launch New Campaign'}
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             )}

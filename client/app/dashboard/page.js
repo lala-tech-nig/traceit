@@ -497,29 +497,26 @@ export default function DashboardPage() {
 
             {/* Ad Carousel */}
             {bannerAds.length > 0 && (
-                <div onClick={() => window.open(bannerAds[currentAdIdx].actionUrl, '_blank')} className="relative bg-white rounded-[2.5rem] border border-neutral-100 shadow-sm overflow-hidden min-h-[140px] flex items-center group cursor-pointer transition-all hover:shadow-md animate-in fade-in zoom-in-95 duration-700">
-                    <div className="absolute inset-0 transition-opacity duration-1000 bg-cover bg-center opacity-5" style={{ backgroundImage: bannerAds[currentAdIdx].mediaUrl ? `url(${bannerAds[currentAdIdx].mediaUrl})` : 'none' }}></div>
-                    
-                    <div className="relative z-10 p-8 md:p-10 flex flex-col md:flex-row items-center justify-between w-full h-full gap-6 transition-all duration-500">
-                        <div className="flex items-center gap-6 flex-1 text-center md:text-left">
-                            {bannerAds[currentAdIdx].mediaUrl && (
-                                <img src={bannerAds[currentAdIdx].mediaUrl} alt="Banner Media" className="w-24 h-24 rounded-2xl object-cover shadow-sm bg-neutral-100 shrink-0 hidden sm:block" />
-                            )}
-                            <div>
-                                <span className="inline-block px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-lg mb-3">Sponsored Announcement</span>
-                                <h3 className="text-2xl font-black text-foreground mb-2">{bannerAds[currentAdIdx].title}</h3>
-                                <p className="text-sm font-medium text-neutral-500 line-clamp-2">{bannerAds[currentAdIdx].description}</p>
-                            </div>
+                <div onClick={() => window.open(bannerAds[currentAdIdx].actionUrl, '_blank')} className="relative bg-neutral-100 rounded-[2.5rem] border border-neutral-100 shadow-sm overflow-hidden aspect-[21/9] md:aspect-[32/9] flex items-center group cursor-pointer transition-all hover:shadow-lg animate-in fade-in zoom-in-95 duration-700 w-full max-h-[300px]">
+                    {bannerAds[currentAdIdx].mediaUrl ? (
+                        <div className="absolute inset-0 bg-cover bg-center transition-transform duration-[10s] ease-out group-hover:scale-110" style={{ backgroundImage: `url(${bannerAds[currentAdIdx].mediaUrl})` }}></div>
+                    ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary-dark flex flex-col items-center justify-center p-8 text-white text-center">
+                            <h3 className="text-3xl font-black mb-2">{bannerAds[currentAdIdx].title}</h3>
+                            <p className="text-sm font-medium opacity-90 max-w-lg">{bannerAds[currentAdIdx].description}</p>
                         </div>
-                        <button className="whitespace-nowrap bg-primary text-white font-bold px-8 py-4 rounded-2xl group-hover:bg-primary-dark transition-all shadow-md shrink-0 w-full md:w-auto">
-                            {bannerAds[currentAdIdx].actionType === 'whatsapp' ? 'Connect on WhatsApp' : 'Learn More'} &rarr;
-                        </button>
+                    )}
+                    
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
+                        <span className="bg-white text-primary font-black px-8 py-4 rounded-full shadow-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 flex items-center gap-2">
+                            {bannerAds[currentAdIdx].actionType === 'whatsapp' ? 'Connect on WhatsApp' : 'Visit Link'} <ChevronRight className="w-5 h-5" />
+                        </span>
                     </div>
 
                     {bannerAds.length > 1 && (
                         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
                             {bannerAds.map((_, i) => (
-                                <div key={i} onClick={(e) => { e.stopPropagation(); setCurrentAdIdx(i); }} className={`w-2 h-2 rounded-full transition-all cursor-pointer ${i === currentAdIdx ? 'bg-primary w-6' : 'bg-neutral-300'}`} />
+                                <div key={i} onClick={(e) => { e.stopPropagation(); setCurrentAdIdx(i); }} className={`w-2 h-2 rounded-full transition-all cursor-pointer shadow-sm ${i === currentAdIdx ? 'bg-white w-8' : 'bg-white/50 hover:bg-white/90'}`} />
                             ))}
                         </div>
                     )}

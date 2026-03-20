@@ -44,7 +44,7 @@ export default function DashboardLayout({ children }) {
         }
     }, [user, loading, router, API_URL]);
 
-    const textSliderAd = layoutAds.find(a => a.type === 'text_slider');
+    const textSliderAds = layoutAds.filter(a => a.type === 'text_slider');
     const popupModalAd = layoutAds.find(a => a.type === 'popup_modal');
 
     if (loading || !user) {
@@ -265,7 +265,7 @@ export default function DashboardLayout({ children }) {
                     </button>
                 </header>
 
-                {textSliderAd && (
+                {textSliderAds.length > 0 && (
                     <div className="bg-primary text-white overflow-hidden flex items-center shadow-[0_4px_20px_rgba(0,0,0,0.1)] z-20 py-3 relative border-b border-primary-dark">
                         <style>{`
                             @keyframes custom-marquee {
@@ -276,18 +276,22 @@ export default function DashboardLayout({ children }) {
                                 display: inline-flex;
                                 align-items: center;
                                 white-space: nowrap;
-                                animation: custom-marquee 20s linear infinite;
+                                animation: custom-marquee 45s linear infinite;
                             }
                             .animate-marquee:hover {
                                 animation-play-state: paused;
                             }
                         `}</style>
                         <div className="animate-marquee min-w-full">
-                            <span className="font-black uppercase tracking-widest mr-3 px-4 py-1 bg-black/20 rounded-full text-[10px] md:text-xs shrink-0">{textSliderAd.title}</span>
-                            <span className="font-bold text-sm md:text-base mr-6 shrink-0">{textSliderAd.description}</span>
-                            <a href={textSliderAd.actionUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 flex items-center gap-1 font-black bg-white/20 text-white px-4 py-1.5 rounded-full text-xs hover:bg-white transition-colors hover:text-primary">
-                                {textSliderAd.actionType === 'whatsapp' ? 'Message on WhatsApp' : 'Visit Link'} &rarr;
-                            </a>
+                            {textSliderAds.map((ad, idx) => (
+                                <div key={ad._id || idx} className="flex items-center shrink-0 mr-16">
+                                    <span className="font-black uppercase tracking-widest mr-3 px-4 py-1 bg-black/20 rounded-full text-[10px] md:text-xs shrink-0">{ad.title}</span>
+                                    <span className="font-bold text-sm md:text-base mr-6 shrink-0">{ad.description}</span>
+                                    <a href={ad.actionUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 flex items-center gap-1 font-black bg-white/20 text-white px-4 py-1.5 rounded-full text-xs hover:bg-white transition-colors hover:text-primary">
+                                        {ad.actionType === 'whatsapp' ? 'Message on WhatsApp' : 'Visit Link'} &rarr;
+                                    </a>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
