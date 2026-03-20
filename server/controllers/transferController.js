@@ -95,30 +95,60 @@ export const acceptTransfer = async (req, res) => {
     }
 };
 
+// @desc    Reject a device transfer
+// @route   PUT /api/transfers/:id/reject
+// @access  Private
+export const rejectTransfer = async (req, res) => {
+    try {
+        const transfer = await Transfer.findById(req.params.id);
+
+        if (!transfer) {
+            return res.status(404).json({ message: 'Transfer request not found' });
+        }
+
+        if (transfer.status !== 'pending') {
+            return res.status(400).json({ message: 'Transfer is no longer pending' });
+        }
+
+        const isTargetUserByEmail = transfer.targetUserEmail === req.user.email;
+        const isTargetUserById = transfer.targetUser && transfer.targetUser.toString() === req.user._id.toString();
+
+        if (!isTargetUserByEmail && !isTargetUserById) {
+            return res.status(401).json({ message: 'Not authorized to reject this transfer' });
+        }
+
+        transfer.status = 'rejected';
+        await transfer.save();
+
+        res.json({ message: 'Transfer rejected successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // @desc    Get user's incoming transfers
 // @route   GET /api/transfers/incoming
 // @access  Private
 export const getIncomingTransfers = async (req, res) => {
     try {
-        const rawTransfers = await Transfer.find({
+        const transfers = await Transfer.find({
             $or: [
                 { targetUser: req.user._id, status: 'pending' },
                 { targetUserEmail: req.user.email, status: 'pending' }
             ]
+        })
+        .populate('device', 'name serialNumber')
+        .populate('initiator', 'firstName lastName email')
+        .lean();
+        
+        const mappedTransfers = transfers.map(t => {
+            if (t.initiator) {
+                t.initiator.name = `${t.initiator.firstName} ${t.initiator.lastName}`;
+            }
+            return t;
         });
         
-        // Manual populate because JsonDB doesn't do it automatically
-        const transfers = await Promise.all(rawTransfers.map(async (t) => {
-            const dev = await Device.findById(t.device);
-            const init = await User.findById(t.initiator);
-            return {
-                ...t,
-                device: dev ? { _id: dev._id, name: dev.name, serialNumber: dev.serialNumber } : null,
-                initiator: init ? { name: `${init.firstName} ${init.lastName}`, email: init.email } : null
-            };
-        }));
-        
-        res.json(transfers);
+        res.json(mappedTransfers);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -129,15 +159,9 @@ export const getIncomingTransfers = async (req, res) => {
 // @access  Private
 export const getOutgoingTransfers = async (req, res) => {
     try {
-        const rawTransfers = await Transfer.find({ initiator: req.user._id, status: 'pending' });
-        
-        const transfers = await Promise.all(rawTransfers.map(async (t) => {
-            const dev = await Device.findById(t.device);
-            return {
-                ...t,
-                device: dev ? { _id: dev._id, name: dev.name, serialNumber: dev.serialNumber } : null,
-            };
-        }));
+        const transfers = await Transfer.find({ initiator: req.user._id, status: 'pending' })
+            .populate('device', 'name serialNumber')
+            .lean();
         
         res.json(transfers);
     } catch (error) {

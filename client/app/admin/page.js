@@ -22,7 +22,12 @@ import {
     Smartphone,
     ArrowUpDown,
     Filter,
-    Download
+    Download,
+    Megaphone,
+    ShieldAlert,
+    PlusCircle,
+    Edit3,
+    ImageIcon
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -38,8 +43,24 @@ export default function AdminDashboard() {
     const [usersLoading, setUsersLoading] = useState(false);
     const [processLoading, setProcessLoading] = useState(null);
     const [message, setMessage] = useState({ type: '', text: '' });
-    const [activeTab, setActiveTab] = useState('overview'); // overview, approvals, accounts, logs
+    const [activeTab, setActiveTab] = useState('overview'); // overview, approvals, accounts, logs, reports, ads
     
+    // Ads and Reports State
+    const [adsLoading, setAdsLoading] = useState(false);
+    const [adsList, setAdsList] = useState([]);
+    const [showAdModal, setShowAdModal] = useState(false);
+    const [editingAdId, setEditingAdId] = useState(null);
+    const [adForm, setAdForm] = useState({ 
+        title: '', description: '', type: 'dashboard_banner', 
+        targetRoles: ['all'], actionType: 'whatsapp', actionUrl: '', 
+        startDate: new Date().toISOString().split('T')[0], 
+        endDate: new Date(Date.now() + 7*86400000).toISOString().split('T')[0],
+        media: null
+    });
+
+    const [reports, setReports] = useState([]);
+    const [reportsLoading, setReportsLoading] = useState(false);
+
     const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
     const [filterRole, setFilterRole] = useState('');
 
@@ -90,11 +111,109 @@ export default function AdminDashboard() {
         if (user) fetchData();
     }, [user]);
 
-    useEffect(() => {
-        if (activeTab === 'accounts' && user) {
-            fetchAllUsers();
+    const fetchReports = async () => {
+        setReportsLoading(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            const res = await axios.get(`${API_URL}/reports`, config);
+            setReports(res.data);
+        } catch (error) {
+            console.error("Failed to fetch reports", error);
+        } finally {
+            setReportsLoading(false);
         }
+    };
+
+    const fetchAds = async () => {
+        setAdsLoading(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            const res = await axios.get(`${API_URL}/ads`, config);
+            setAdsList(res.data);
+        } catch (error) {
+            console.error("Failed to fetch ads", error);
+        } finally {
+            setAdsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'accounts' && user) fetchAllUsers();
+        if (activeTab === 'reports' && user) fetchReports();
+        if (activeTab === 'ads' && user) fetchAds();
     }, [activeTab, sortConfig, filterRole]);
+
+    const resetAdForm = () => {
+        setAdForm({ 
+            title: '', description: '', type: 'dashboard_banner', 
+            targetRoles: ['all'], actionType: 'whatsapp', actionUrl: '', 
+            startDate: new Date().toISOString().split('T')[0], 
+            endDate: new Date(Date.now() + 7*86400000).toISOString().split('T')[0],
+            media: null
+        });
+        setEditingAdId(null);
+    };
+
+    const handleOpenAdModal = (ad = null) => {
+        if (ad) {
+            setAdForm({
+                title: ad.title, description: ad.description, type: ad.type,
+                targetRoles: ad.targetRoles, actionType: ad.actionType, actionUrl: ad.actionUrl,
+                startDate: new Date(ad.startDate).toISOString().split('T')[0],
+                endDate: new Date(ad.endDate).toISOString().split('T')[0],
+                media: null
+            });
+            setEditingAdId(ad._id);
+        } else {
+            resetAdForm();
+        }
+        setShowAdModal(true);
+    };
+
+    const handleSaveAd = async (e) => {
+        e.preventDefault();
+        setAdsLoading(true);
+        setMessage({ type: '', text: '' });
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'multipart/form-data' } };
+            const formData = new FormData();
+            formData.append('title', adForm.title);
+            formData.append('description', adForm.description);
+            formData.append('type', adForm.type);
+            formData.append('actionType', adForm.actionType);
+            formData.append('actionUrl', adForm.actionUrl);
+            formData.append('startDate', adForm.startDate);
+            formData.append('endDate', adForm.endDate);
+            formData.append('targetRoles', JSON.stringify(adForm.targetRoles));
+            if (adForm.media) formData.append('mediaUrl', adForm.media);
+
+            if (editingAdId) {
+                await axios.put(`${API_URL}/ads/${editingAdId}`, formData, config);
+                setMessage({ type: 'success', text: 'Ad Campaign updated successfully!' });
+            } else {
+                await axios.post(`${API_URL}/ads`, formData, config);
+                setMessage({ type: 'success', text: 'Ad Campaign launched successfully!' });
+            }
+            
+            setShowAdModal(false);
+            resetAdForm();
+            fetchAds();
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Failed to broadcast ad.' });
+        } finally {
+            setAdsLoading(false);
+        }
+    };
+
+    const toggleAd = async (id) => {
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.patch(`${API_URL}/ads/${id}`, {}, config);
+            fetchAds();
+        } catch (err) {
+            console.error(err);
+        }
+    };
 
     const handleApprove = async (id) => {
         setProcessLoading(id);
@@ -175,6 +294,8 @@ export default function AdminDashboard() {
                     { id: 'overview', label: 'Platform Overview', icon: Activity },
                     { id: 'accounts', label: 'All Accounts', icon: Users },
                     { id: 'approvals', label: `Pending Approvals (${pendingUsers.length})`, icon: Clock },
+                    { id: 'reports', label: 'Device Reports', icon: ShieldAlert },
+                    { id: 'ads', label: 'Broadcast Ad', icon: Megaphone },
                     { id: 'logs', label: 'Activity Logs', icon: SearchCode }
                 ].map(tab => (
                     <button
@@ -477,6 +598,236 @@ export default function AdminDashboard() {
                          <h2 className="text-2xl font-black text-foreground">Advanced Logs</h2>
                          <p className="text-neutral-500 font-medium">Comprehensive platform auditing and historical data coming soon.</p>
                          <button onClick={() => setActiveTab('overview')} className="mt-6 text-primary font-bold hover:underline">Back to Overview</button>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'reports' && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="bg-white border border-neutral-200 rounded-[2.5rem] overflow-hidden shadow-sm">
+                        <div className="p-8 border-b border-neutral-100">
+                            <h3 className="text-xl font-black text-foreground">Device Discrepancy Reports</h3>
+                            <p className="text-sm font-medium text-neutral-500 mt-1">Review flagged devices reported by users during searches.</p>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-widest border-b border-neutral-100">
+                                        <th className="px-8 py-4">Reporter</th>
+                                        <th className="px-8 py-4">Device</th>
+                                        <th className="px-8 py-4">Details</th>
+                                        <th className="px-8 py-4">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-50">
+                                    {reportsLoading ? (
+                                        <tr><td colSpan="4" className="px-8 py-20 text-center"><Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" /></td></tr>
+                                    ) : reports.length === 0 ? (
+                                        <tr><td colSpan="4" className="px-8 py-20 text-center"><p className="text-neutral-400 font-bold">No device reports submitted.</p></td></tr>
+                                    ) : reports.map(r => (
+                                        <tr key={r._id} className="hover:bg-neutral-50/50 transition-colors">
+                                            <td className="px-8 py-5">
+                                                <p className="font-bold text-foreground text-sm">{r.reporter?.firstName} {r.reporter?.lastName}</p>
+                                                <p className="text-xs text-neutral-500">{r.reporter?.phoneNumber || r.reporter?.email}</p>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <p className="font-bold text-foreground text-sm">{r.device?.name || 'Unknown Device'}</p>
+                                                <p className="text-xs font-mono text-neutral-500">{r.device?.serialNumber}</p>
+                                            </td>
+                                            <td className="px-8 py-5 max-w-sm">
+                                                <p className="text-xs font-bold text-foreground"><span className="text-neutral-400 uppercase tracking-widest text-[10px]">LOC:</span> {r.address}</p>
+                                                <p className="text-xs text-neutral-600 mt-1 line-clamp-2"><span className="text-neutral-400 font-bold uppercase tracking-widest text-[10px]">DESC:</span> {r.sellerDescription}</p>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-600">
+                                                    {r.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'ads' && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="bg-white border border-neutral-200 rounded-[2.5rem] overflow-hidden shadow-sm">
+                        <div className="p-8 border-b border-neutral-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <h3 className="text-xl font-black text-foreground">Global Ad Campaigns</h3>
+                                <p className="text-sm font-medium text-neutral-500 mt-1">Manage scheduled ads, popups, and banners across the platform.</p>
+                            </div>
+                            <button 
+                                onClick={() => handleOpenAdModal()}
+                                className="flex items-center justify-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-primary-dark transition-all shadow-md shadow-primary/20 shrink-0"
+                            >
+                                <PlusCircle className="w-5 h-5" />
+                                Create Campaign
+                            </button>
+                        </div>
+                        
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-widest border-b border-neutral-100">
+                                        <th className="px-8 py-4">Campaign</th>
+                                        <th className="px-8 py-4">Type & Targeting</th>
+                                        <th className="px-8 py-4">Duration</th>
+                                        <th className="px-8 py-4">Status</th>
+                                        <th className="px-8 py-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-50">
+                                    {adsLoading && adsList.length === 0 ? (
+                                        <tr><td colSpan="5" className="px-8 py-20 text-center"><Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" /></td></tr>
+                                    ) : adsList.length === 0 ? (
+                                        <tr><td colSpan="5" className="px-8 py-20 text-center"><p className="text-neutral-400 font-bold">No ad campaigns found.</p></td></tr>
+                                    ) : adsList.map(ad => (
+                                        <tr key={ad._id} className="hover:bg-neutral-50/50 transition-colors">
+                                            <td className="px-8 py-5">
+                                                <div className="flex items-center gap-3">
+                                                    {ad.mediaUrl ? (
+                                                        <img src={ad.mediaUrl} alt="Ad media" className="w-10 h-10 rounded-lg object-cover bg-neutral-100 shrink-0" />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-400 shrink-0">
+                                                            <ImageIcon className="w-5 h-5" />
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <p className="font-bold text-foreground text-sm max-w-[200px] truncate">{ad.title}</p>
+                                                        <p className="text-[10px] font-medium text-neutral-500 uppercase flex items-center gap-1 mt-0.5">
+                                                            {ad.actionType === 'whatsapp' ? 'WhatsApp' : 'Website'} Link
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <p className="text-xs font-bold text-neutral-600 uppercase tracking-wider mb-1">
+                                                    {ad.type.replace('_', ' ')}
+                                                </p>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {ad.targetRoles.map((r, i) => (
+                                                        <span key={i} className="px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-md text-[9px] font-black uppercase">{r}</span>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-5 min-w-[120px]">
+                                                <p className="text-xs font-bold text-neutral-700">{new Date(ad.startDate).toLocaleDateString()}</p>
+                                                <p className="text-[10px] text-neutral-400 font-bold mt-0.5">to {new Date(ad.endDate).toLocaleDateString()}</p>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <button 
+                                                    onClick={() => toggleAd(ad._id)}
+                                                    className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border transition-all ${
+                                                        ad.isActive ? 'bg-green-50 text-green-600 border-green-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200' : 'bg-neutral-100 text-neutral-500 border-neutral-200 hover:bg-green-50 hover:text-green-600 hover:border-green-200'
+                                                    }`}
+                                                >
+                                                    {ad.isActive ? 'Active (Click to Pause)' : 'Paused (Click to Start)'}
+                                                </button>
+                                            </td>
+                                            <td className="px-8 py-5 text-right">
+                                                <button onClick={() => handleOpenAdModal(ad)} className="p-2 text-neutral-400 hover:text-primary transition-colors hover:bg-primary/5 rounded-lg inline-flex">
+                                                    <Edit3 className="w-4 h-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
+            {/* Modal for Ad Campaign */}
+            {showAdModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/20 backdrop-blur-sm">
+                    <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-8">
+                            <div>
+                                <h3 className="text-2xl font-black text-foreground">{editingAdId ? 'Edit Campaign' : 'Launch New Campaign'}</h3>
+                                <p className="text-sm font-medium text-neutral-500 mt-1">Configure your ad delivery, targeting, and media.</p>
+                            </div>
+                            <button onClick={() => setShowAdModal(false)} className="p-2 bg-neutral-100 text-neutral-500 rounded-full hover:bg-neutral-200 transition-colors">
+                                <XCircle className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleSaveAd} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">Campaign Title</label>
+                                    <input required type="text" value={adForm.title} onChange={e => setAdForm({...adForm, title: e.target.value})} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">Description</label>
+                                    <textarea required rows={2} value={adForm.description} onChange={e => setAdForm({...adForm, description: e.target.value})} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none" />
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">Ad Type / Location</label>
+                                    <select value={adForm.type} onChange={e => setAdForm({...adForm, type: e.target.value})} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer">
+                                        <option value="dashboard_banner">Dashboard Banner (Carousel)</option>
+                                        <option value="text_slider">Top Notice Bar (Text Marquee)</option>
+                                        <option value="popup_modal">Session Popup Modal (Center)</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">Target Audience Roles</label>
+                                    <select multiple value={adForm.targetRoles} onChange={e => {
+                                        const values = Array.from(e.target.selectedOptions, option => option.value);
+                                        setAdForm({...adForm, targetRoles: values.includes('all') ? ['all'] : values});
+                                    }} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer h-14">
+                                        <option value="all">Everyone</option>
+                                        <option value="basic">Basic Users</option>
+                                        <option value="technician">Technicians</option>
+                                        <option value="vendor">Vendors</option>
+                                        <option value="substore">Sub-Stores</option>
+                                    </select>
+                                    <p className="text-[10px] text-neutral-400 mt-1">Hold Ctrl/Cmd to select multiple</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">Action Type</label>
+                                    <select value={adForm.actionType} onChange={e => setAdForm({...adForm, actionType: e.target.value})} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer">
+                                        <option value="whatsapp">WhatsApp Direct Chat</option>
+                                        <option value="website">External Website Link</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">Action URL</label>
+                                    <input required type="url" value={adForm.actionUrl} onChange={e => setAdForm({...adForm, actionUrl: e.target.value})} placeholder={adForm.actionType === 'whatsapp' ? 'https://wa.me/...' : 'https://...'} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">Start Date</label>
+                                    <input required type="date" value={adForm.startDate} onChange={e => setAdForm({...adForm, startDate: e.target.value})} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">End Date</label>
+                                    <input required type="date" value={adForm.endDate} min={adForm.startDate} onChange={e => setAdForm({...adForm, endDate: e.target.value})} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" />
+                                </div>
+
+                                {adForm.type !== 'text_slider' && (
+                                    <div className="md:col-span-2">
+                                        <label className="block text-xs font-black text-neutral-400 uppercase tracking-widest mb-2">Media Upload (Banner/Popup Image)</label>
+                                        <input type="file" accept="image/*,video/*" onChange={e => setAdForm({...adForm, media: e.target.files[0]})} className="w-full px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-primary/10 file:text-primary hover:file:bg-primary/20" />
+                                    </div>
+                                )}
+                            </div>
+
+                            <button 
+                                disabled={adsLoading}
+                                type="submit"
+                                className="w-full mt-4 bg-primary text-white font-black py-4 rounded-xl hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {adsLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : editingAdId ? 'Update Campaign' : 'Launch Campaign'}
+                            </button>
+                        </form>
                     </div>
                 </div>
             )}

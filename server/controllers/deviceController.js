@@ -2,6 +2,7 @@ import Device from '../models/Device.js';
 import User from '../models/User.js';
 import Payment from '../models/Payment.js';
 import SearchLog from '../models/SearchLog.js';
+import Report from '../models/Report.js';
 
 // @desc    Add a new device
 // @route   POST /api/devices
@@ -95,7 +96,14 @@ export const updateDeviceStatus = async (req, res) => {
             return res.status(401).json({ message: 'Not authorized to update this device' });
         }
 
-        if (status) device.status = status;
+        if (status && device.status !== status) {
+            device.statusUpdates.push({
+                status,
+                comment: statusComment || '',
+                date: new Date()
+            });
+            device.status = status;
+        }
         if (statusComment !== undefined) device.statusComment = statusComment;
 
         const updatedDevice = await device.save();
@@ -154,10 +162,18 @@ export const searchDevice = async (req, res) => {
             await SearchLog.create({
                 user: req.user._id,
                 query: identifier,
-                found: false
+                found: false,
+                ipAddress: req.ip
             });
             return res.status(404).json({ message: 'Device not found' });
         }
+
+        // Fetch reports for this device
+        const reports = await Report.find({ device: device._id })
+            .populate('reporter', 'firstName lastName')
+            .lean();
+            
+        device.reports = reports;
 
         // Blurred response logic happens on client if they haven't paid, OR we can restrict here based on a query param 'paid=true'
         // To ensure security, if user is 'basic' we must check if they have a successful payment block
@@ -167,7 +183,8 @@ export const searchDevice = async (req, res) => {
             user: req.user._id,
             query: identifier,
             found: true,
-            device: device._id
+            device: device._id,
+            ipAddress: req.ip
         });
 
         res.json(device);
@@ -206,8 +223,8 @@ export const getDeviceHistory = async (req, res) => {
         const rawDevices = await Device.find();
         
         const historyDevices = rawDevices.filter(d => {
-            if (d.currentOwner === userId) return true;
-            if (d.history && d.history.some(h => (h.previousOwner === userId || h.newOwner === userId))) return true;
+            if (d.currentOwner?.toString() === userId) return true;
+            if (d.history && d.history.some(h => (h.previousOwner?.toString() === userId || h.newOwner?.toString() === userId))) return true;
             return false;
         });
         

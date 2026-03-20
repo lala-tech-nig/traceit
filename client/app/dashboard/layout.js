@@ -19,12 +19,33 @@ export default function DashboardLayout({ children }) {
     const [ninMessage, setNinMessage] = useState({ type: '', text: '' });
     const [paymentDone, setPaymentDone] = useState(false);
     const [paymentLoading, setPaymentLoading] = useState(false);
+    const [layoutAds, setLayoutAds] = useState([]);
+    const [showPopup, setShowPopup] = useState(false);
 
     useEffect(() => {
         if (!loading && !user) {
             router.push('/login');
         }
-    }, [user, loading, router]);
+        if (user) {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            axios.get(`${API_URL}/ads/public/active`, config)
+                .then(res => {
+                    setLayoutAds(res.data);
+                    const popup = res.data.find(a => a.type === 'popup_modal');
+                    if (popup) {
+                        const sessionKey = `ad_popup_shown_${popup._id}`;
+                        if (!sessionStorage.getItem(sessionKey)) {
+                            setShowPopup(true);
+                            sessionStorage.setItem(sessionKey, 'true');
+                        }
+                    }
+                })
+                .catch(console.log);
+        }
+    }, [user, loading, router, API_URL]);
+
+    const textSliderAd = layoutAds.find(a => a.type === 'text_slider');
+    const popupModalAd = layoutAds.find(a => a.type === 'popup_modal');
 
     if (loading || !user) {
         return <div className="min-h-screen flex items-center justify-center font-bold text-neutral-500">Loading...</div>;
@@ -104,6 +125,7 @@ export default function DashboardLayout({ children }) {
                         { name: 'My Devices', href: '/dashboard/devices', icon: Smartphone },
                         { name: 'Transfers', href: '/dashboard/transfers', icon: ArrowLeftRight },
                         { name: 'Device History', href: '/dashboard/history', icon: History },
+                        { name: 'Device Alerts', href: '/dashboard/alerts', icon: ShieldAlert },
                     ].map((item) => {
                         const isActive = pathname === item.href;
                         return (
@@ -243,6 +265,33 @@ export default function DashboardLayout({ children }) {
                     </button>
                 </header>
 
+                {textSliderAd && (
+                    <div className="bg-primary text-white overflow-hidden flex items-center shadow-[0_4px_20px_rgba(0,0,0,0.1)] z-20 py-3 relative border-b border-primary-dark">
+                        <style>{`
+                            @keyframes custom-marquee {
+                                0% { transform: translateX(100vw); }
+                                100% { transform: translateX(-100%); }
+                            }
+                            .animate-marquee {
+                                display: inline-flex;
+                                align-items: center;
+                                white-space: nowrap;
+                                animation: custom-marquee 20s linear infinite;
+                            }
+                            .animate-marquee:hover {
+                                animation-play-state: paused;
+                            }
+                        `}</style>
+                        <div className="animate-marquee min-w-full">
+                            <span className="font-black uppercase tracking-widest mr-3 px-4 py-1 bg-black/20 rounded-full text-[10px] md:text-xs shrink-0">{textSliderAd.title}</span>
+                            <span className="font-bold text-sm md:text-base mr-6 shrink-0">{textSliderAd.description}</span>
+                            <a href={textSliderAd.actionUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 flex items-center gap-1 font-black bg-white/20 text-white px-4 py-1.5 rounded-full text-xs hover:bg-white transition-colors hover:text-primary">
+                                {textSliderAd.actionType === 'whatsapp' ? 'Message on WhatsApp' : 'Visit Link'} &rarr;
+                            </a>
+                        </div>
+                    </div>
+                )}
+
                 <div className="flex-1 overflow-y-auto p-6 md:p-8 relative pb-28 md:pb-8">
                     {children}
                 </div>
@@ -296,6 +345,36 @@ export default function DashboardLayout({ children }) {
                     })}
                 </div>
             </div>
+
+            {/* Popup Modal Ad */}
+            {showPopup && popupModalAd && (
+                <div className="fixed inset-0 z-[200] bg-neutral-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-300">
+                        <button 
+                            onClick={() => setShowPopup(false)}
+                            className="absolute top-4 right-4 w-10 h-10 bg-black/20 hover:bg-black/40 rounded-full flex items-center justify-center text-white transition-all z-10"
+                        >
+                            ✕
+                        </button>
+                        {popupModalAd.mediaUrl && (
+                            <img src={popupModalAd.mediaUrl} alt="Ad Media" className="w-full h-56 object-cover bg-neutral-100" />
+                        )}
+                        <div className="p-8 text-center border-t-4 border-primary">
+                            <h3 className="text-2xl font-black text-foreground mb-3">{popupModalAd.title}</h3>
+                            <p className="text-neutral-500 font-medium leading-relaxed mb-8">{popupModalAd.description}</p>
+                            <a 
+                                href={popupModalAd.actionUrl}
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                onClick={() => setShowPopup(false)}
+                                className="w-full bg-primary text-white font-black py-4 rounded-xl hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+                            >
+                                {popupModalAd.actionType === 'whatsapp' ? 'Continue to WhatsApp' : 'Visit Link'} &rarr;
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

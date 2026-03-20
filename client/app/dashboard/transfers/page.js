@@ -55,6 +55,17 @@ export default function TransfersPage() {
         }
     };
 
+    const handleReject = async (transferId) => {
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.put(`${API_URL}/transfers/${transferId}/reject`, {}, config);
+            setMessage({ type: 'success', text: 'Transfer rejected successfully!' });
+            fetchData(); // Refresh lists
+        } catch (error) {
+            setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to reject transfer' });
+        }
+    };
+
     const verifyEmail = async () => {
         if (!transferForm.targetUserEmail) return;
         setVerifying(true);
@@ -189,7 +200,7 @@ export default function TransfersPage() {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                 <div>
                     <h2 className="text-xl font-bold text-foreground mb-4">Pending Incoming Transfers</h2>
                 {loading ? (
@@ -219,10 +230,14 @@ export default function TransfersPage() {
                                         </p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                    <button onClick={() => handleAccept(transfer._id)} className="bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm">
-                                        <Check className="w-5 h-5" />
-                                        Accept Device
+                                <div className="flex flex-col gap-2 shrink-0 min-w-[140px]">
+                                    <button onClick={() => handleAccept(transfer._id)} className="w-full bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-green-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                                        <Check className="w-4 h-4" />
+                                        Accept
+                                    </button>
+                                    <button onClick={() => handleReject(transfer._id)} className="w-full bg-red-50 text-red-600 px-5 py-2.5 rounded-xl font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                                        <X className="w-4 h-4" />
+                                        Reject
                                     </button>
                                 </div>
                             </div>

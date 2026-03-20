@@ -1,44 +1,32 @@
-import JsonDB from '../utils/jsonDb.js';
+import mongoose from 'mongoose';
 
-const db = new JsonDB('devices');
+const deviceSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    brand: { type: String, required: true },
+    model: { type: String, required: true },
+    color: { type: String, required: true },
+    serialNumber: { type: String, required: true },
+    imei: { type: String },
+    category: { type: String, required: true },
+    specs: { type: Object, default: {} },
+    currentOwner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    deviceImage: { type: String },
+    history: [{
+        previousOwner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        newOwner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        transferDate: { type: Date, default: Date.now },
+        comment: { type: String }
+    }],
+    statusUpdates: [{
+        status: { type: String },
+        comment: { type: String },
+        date: { type: Date, default: Date.now }
+    }],
+    status: { type: String, enum: ['clean', 'stolen', 'lost'], default: 'clean' },
+    statusComment: { type: String, default: '' }
+}, {
+    timestamps: true
+});
 
-const Device = {
-    async create(data) {
-        data.history = data.history || [];
-        data.status = data.status || 'clean';
-        return db.create(data);
-    },
-    
-    async find(query) {
-        const results = await db.find(query);
-        // Add fake populate support because controllers chain `.populate()`
-        results.populate = function() { return this; };
-        return results;
-    },
-
-    async findOne(query) {
-        const result = await db.findOne(query);
-        return result;
-    },
-
-    async countDocuments(query) {
-        const results = await db.find(query || {});
-        return results.length;
-    },
-
-    async findById(id) {
-        const result = await db.findById(id);
-        return result;
-    },
-    
-    async findByIdAndUpdate(id, data, options) {
-        const result = await db.findByIdAndUpdate(id, data, options);
-        return result;
-    },
-
-    async updateMany(query, data) {
-        return db.updateMany(query, data);
-    }
-};
-
+const Device = mongoose.model('Device', deviceSchema);
 export default Device;

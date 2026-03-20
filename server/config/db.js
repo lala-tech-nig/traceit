@@ -1,20 +1,12 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const dbPath = path.join(__dirname, '..', 'db.json');
+import mongoose from 'mongoose';
 
 const connectDB = async () => {
     try {
-        if (!fs.existsSync(dbPath)) {
-            console.log('db.json not found. It will be created by JsonDB on startup.');
-        } else {
-            console.log('Local db.json ready');
-        }
+        const conn = await mongoose.connect(process.env.MONGO_URI);
+        console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
-        console.error(`Error with local DB: ${error.message}`);
+        console.error(`Error with MongoDB: ${error.message}`);
+        process.exit(1);
     }
 };
 

@@ -24,6 +24,11 @@ export default function DashboardPage() {
     const [searchLoading, setSearchLoading] = useState(false);
     const [searchError, setSearchError] = useState('');
 
+    const [showReportModal, setShowReportModal] = useState(false);
+    const [reportForm, setReportForm] = useState({ address: '', sellerDescription: '' });
+    const [reportLoading, setReportLoading] = useState(false);
+    const [reportMsg, setReportMsg] = useState({ type: '', text: '' });
+
     const isRestricted = !user?.isApproved;
 
     useEffect(() => {
@@ -35,14 +40,20 @@ export default function DashboardPage() {
                 const token = user?.token;
                 const config = { headers: { Authorization: `Bearer ${token}` } };
 
-                const devicesRes = await axios.get(`${API_URL}/devices/mydevices`, config);
-                const transfersRes = await axios.get(`${API_URL}/transfers/incoming`, config);
+                const [devicesRes, transfersRes, adsRes] = await Promise.all([
+                    axios.get(`${API_URL}/devices/mydevices`, config),
+                    axios.get(`${API_URL}/transfers/incoming`, config),
+                    axios.get(`${API_URL}/ads/public/active`, config)
+                ]);
 
                 setStats({
                     devices: devicesRes.data.length,
                     transfers: 0,
                     incomingTransfers: transfersRes.data.length
                 });
+
+                const banners = adsRes.data.filter(a => a.type === 'dashboard_banner');
+                setBannerAds(banners);
             } catch (error) {
                 console.error("Failed to fetch dashboard detail", error);
             } finally {
@@ -55,6 +66,17 @@ export default function DashboardPage() {
             if (user.hasPaid && !user.isApproved) setVerifyStep(3);
         }
     }, [user, API_URL]);
+
+    const [bannerAds, setBannerAds] = useState([]);
+    const [currentAdIdx, setCurrentAdIdx] = useState(0);
+
+    useEffect(() => {
+        if (bannerAds.length <= 1) return;
+        const timer = setInterval(() => {
+            setCurrentAdIdx(prev => (prev + 1) % bannerAds.length);
+        }, 6000);
+        return () => clearInterval(timer);
+    }, [bannerAds]);
 
     const handleNinSubmit = async (e) => {
         e.preventDefault();
@@ -138,6 +160,8 @@ export default function DashboardPage() {
 
     const handlePayment = async () => {
         setVerifyLoading(true);
+// ...
+// (We just add the report submit here to keep it organized)
         setError('');
         
         const reference = `traceit-nin-${user._id}-${Date.now()}`;
@@ -176,6 +200,81 @@ export default function DashboardPage() {
             setError('Could not initiate payment. Please check your connection.');
             setVerifyLoading(false);
         }
+    };
+
+    const handleReportSubmit = async (e) => {
+        e.preventDefault();
+        setReportLoading(true);
+        setReportMsg({ type: '', text: '' });
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            const res = await axios.post(`${API_URL}/reports`, {
+                deviceId: searchResult._id,
+                address: reportForm.address,
+                sellerDescription: reportForm.sellerDescription
+            }, config);
+            setReportMsg({ type: 'success', text: res.data.message });
+            setTimeout(() => {
+                setShowReportModal(false);
+                setReportMsg({ type: '', text: '' });
+                setReportForm({ address: '', sellerDescription: '' });
+            }, 2500);
+
+            // Fetch profile to update points
+            const profileRes = await axios.get(`${API_URL}/auth/profile`, config);
+            login({ ...user, ...profileRes.data });
+        } catch (err) {
+            setReportMsg({ type: 'error', text: err.response?.data?.message || 'Report failed' });
+        } finally {
+            setReportLoading(false);
+        }
+    };
+
+    const getCombinedHistory = (device) => {
+        if (!device) return [];
+        const combined = [
+            { id: 'reg', type: 'registration', date: new Date(device.createdAt), title: 'Device Registered', desc: 'Added to TraceIt Registry', icon: 'check', color: 'green' },
+            ...(device.history || []).map((h, i) => ({
+                id: `transfer-${i}`,
+                type: 'transfer',
+                date: new Date(h.transferDate),
+                title: 'Ownership Transfer',
+                desc: `From ${h.previousOwner?.firstName || 'Unknown'} to ${h.newOwner?.firstName || 'Unknown'}`,
+                comment: h.comment,
+                icon: 'transfer',
+                color: 'blue'
+            })),
+            ...(device.reports || []).map((r, i) => ({
+                id: `report-${i}`,
+                type: 'report',
+                date: new Date(r.createdAt),
+                title: 'Device Flagged',
+                desc: `Reported at: ${r.address}`,
+                comment: r.sellerDescription,
+                icon: 'alert',
+                color: 'red'
+            })),
+            ...(device.statusUpdates || []).map((s, i) => ({
+                id: `status-${i}`,
+                type: 'status',
+                date: new Date(s.date),
+                title: `Status Changed to ${s.status}`,
+                desc: `Marked as ${s.status.toUpperCase()}`,
+                comment: s.comment,
+                icon: 'status',
+                color: 'amber'
+            }))
+        ];
+        return combined.sort((a, b) => b.date - a.date);
+    };
+
+    const searchHistoryTimeline = searchResult ? getCombinedHistory(searchResult) : [];
+
+    const colorClasses = {
+        green: { bg: 'bg-green-100', text: 'text-green-600', hoverBg: 'hover:bg-green-50/30', hoverBorder: 'hover:border-green-200' },
+        blue: { bg: 'bg-blue-100', text: 'text-blue-600', hoverBg: 'hover:bg-blue-50/30', hoverBorder: 'hover:border-blue-200' },
+        red: { bg: 'bg-red-100', text: 'text-red-600', hoverBg: 'hover:bg-red-50/30', hoverBorder: 'hover:border-red-200' },
+        amber: { bg: 'bg-amber-100', text: 'text-amber-600', hoverBg: 'hover:bg-amber-50/30', hoverBorder: 'hover:border-amber-200' }
     };
 
     if (loading) {
@@ -296,6 +395,44 @@ export default function DashboardPage() {
                                     </div>
                                 )}
                             </div>
+                            
+                            {searchResult.status !== 'clean' && !isRestricted && (
+                                <button onClick={() => setShowReportModal(true)} className="mt-6 w-full bg-red-50 text-red-600 border border-red-200 font-bold py-3.5 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
+                                    <ShieldAlert className="w-5 h-5" />
+                                    Flag / Report Device Location (Earn Reward Points)
+                                </button>
+                            )}
+
+                            {!isRestricted && searchHistoryTimeline.length > 0 && (
+                                <div className="mt-8 border-t border-neutral-200 pt-8">
+                                    <h4 className="text-lg font-black text-foreground mb-8 flex items-center gap-2">
+                                        <History className="w-5 h-5" /> Device Lifecycle History
+                                    </h4>
+                                    <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-neutral-200 before:to-transparent">
+                                        {searchHistoryTimeline.map((item) => {
+                                            const colors = colorClasses[item.color] || colorClasses.blue;
+                                            return (
+                                                <div key={item.id} className="relative flex items-center justify-between md:justify-normal md:even:flex-row-reverse group is-active mt-6">
+                                                    <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 ${colors.bg} ${colors.text}`}>
+                                                        {item.icon === 'check' && <CheckCircle className="w-4 h-4" />}
+                                                        {item.icon === 'transfer' && <ArrowLeftRight className="w-4 h-4" />}
+                                                        {item.icon === 'alert' && <ShieldAlert className="w-4 h-4" />}
+                                                        {item.icon === 'status' && <Activity className="w-4 h-4" />}
+                                                    </div>
+                                                    <div className={`w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white p-4 rounded-2xl border border-neutral-100 shadow-sm transition-all hover:-translate-y-1 ${colors.hoverBg} ${colors.hoverBorder}`}>
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className={`text-xs font-bold uppercase tracking-widest ${colors.text}`}>{item.title}</span>
+                                                            <time className="text-[10px] font-bold text-neutral-400">{item.date.toLocaleDateString()}</time>
+                                                        </div>
+                                                        <p className="text-sm font-bold text-foreground">{item.desc}</p>
+                                                        {item.comment && <p className="text-xs text-neutral-500 mt-1 italic">"{item.comment}"</p>}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -357,6 +494,37 @@ export default function DashboardPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Ad Carousel */}
+            {bannerAds.length > 0 && (
+                <div onClick={() => window.open(bannerAds[currentAdIdx].actionUrl, '_blank')} className="relative bg-white rounded-[2.5rem] border border-neutral-100 shadow-sm overflow-hidden min-h-[140px] flex items-center group cursor-pointer transition-all hover:shadow-md animate-in fade-in zoom-in-95 duration-700">
+                    <div className="absolute inset-0 transition-opacity duration-1000 bg-cover bg-center opacity-5" style={{ backgroundImage: bannerAds[currentAdIdx].mediaUrl ? `url(${bannerAds[currentAdIdx].mediaUrl})` : 'none' }}></div>
+                    
+                    <div className="relative z-10 p-8 md:p-10 flex flex-col md:flex-row items-center justify-between w-full h-full gap-6 transition-all duration-500">
+                        <div className="flex items-center gap-6 flex-1 text-center md:text-left">
+                            {bannerAds[currentAdIdx].mediaUrl && (
+                                <img src={bannerAds[currentAdIdx].mediaUrl} alt="Banner Media" className="w-24 h-24 rounded-2xl object-cover shadow-sm bg-neutral-100 shrink-0 hidden sm:block" />
+                            )}
+                            <div>
+                                <span className="inline-block px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-lg mb-3">Sponsored Announcement</span>
+                                <h3 className="text-2xl font-black text-foreground mb-2">{bannerAds[currentAdIdx].title}</h3>
+                                <p className="text-sm font-medium text-neutral-500 line-clamp-2">{bannerAds[currentAdIdx].description}</p>
+                            </div>
+                        </div>
+                        <button className="whitespace-nowrap bg-primary text-white font-bold px-8 py-4 rounded-2xl group-hover:bg-primary-dark transition-all shadow-md shrink-0 w-full md:w-auto">
+                            {bannerAds[currentAdIdx].actionType === 'whatsapp' ? 'Connect on WhatsApp' : 'Learn More'} &rarr;
+                        </button>
+                    </div>
+
+                    {bannerAds.length > 1 && (
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
+                            {bannerAds.map((_, i) => (
+                                <div key={i} onClick={(e) => { e.stopPropagation(); setCurrentAdIdx(i); }} className={`w-2 h-2 rounded-full transition-all cursor-pointer ${i === currentAdIdx ? 'bg-primary w-6' : 'bg-neutral-300'}`} />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {isRestricted ? (
                 user?.hasPaid ? (
@@ -540,6 +708,66 @@ export default function DashboardPage() {
                                     </button>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Report Modal */}
+            {showReportModal && (
+                <div className="fixed inset-0 z-[100] bg-neutral-900/90 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-300">
+                        <button 
+                            onClick={() => setShowReportModal(false)}
+                            className="absolute top-6 right-6 w-10 h-10 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400 hover:text-foreground transition-all"
+                        >
+                            ✕
+                        </button>
+                        <div className="p-10 md:p-12">
+                            <div className="text-center mb-8">
+                                <div className="w-20 h-20 bg-red-50 text-red-600 flex items-center justify-center rounded-3xl mx-auto mb-6">
+                                    <ShieldAlert className="w-10 h-10" />
+                                </div>
+                                <h3 className="text-3xl font-black text-foreground mb-2">Report Device</h3>
+                                <p className="text-neutral-500 font-medium leading-relaxed">Please provide the location and description of the person in possession of this stolen/lost device. You earn reward points for accurate reports!</p>
+                            </div>
+                            
+                            {reportMsg.text && (
+                                <div className={`p-4 rounded-xl font-bold mb-6 text-center ${reportMsg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                                    {reportMsg.text}
+                                </div>
+                            )}
+
+                            <form onSubmit={handleReportSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Device Location / Address</label>
+                                    <input 
+                                        required
+                                        type="text"
+                                        value={reportForm.address}
+                                        onChange={(e) => setReportForm({ ...reportForm, address: e.target.value })}
+                                        placeholder="e.g. Shop 12, Computer Village, Ikeja"
+                                        className="w-full px-6 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Seller / Possessor Description</label>
+                                    <textarea 
+                                        required
+                                        value={reportForm.sellerDescription}
+                                        onChange={(e) => setReportForm({ ...reportForm, sellerDescription: e.target.value })}
+                                        placeholder="Describe the person who brought the device..."
+                                        className="w-full px-6 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium h-28 focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+                                    />
+                                </div>
+                                <button 
+                                    disabled={reportLoading}
+                                    type="submit"
+                                    className="w-full bg-red-600 text-white font-black py-5 rounded-2xl hover:bg-red-700 transition-all shadow-xl shadow-red-600/20 flex items-center justify-center gap-3 disabled:opacity-50 mt-4"
+                                >
+                                    {reportLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Submit Report'}
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>

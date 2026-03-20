@@ -3,7 +3,7 @@
 import { useAuth } from '@/context/AuthContext';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { History, Smartphone, Calendar, User as UserIcon } from 'lucide-react';
+import { History, Smartphone, Calendar, User as UserIcon, ArrowLeftRight } from 'lucide-react';
 
 export default function DeviceHistoryPage() {
     const { user, API_URL } = useAuth();

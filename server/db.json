@@ -34,8 +34,48 @@
       "transferCount": 0
     }
   ],
-  "devices": [],
-  "transfers": [],
+  "devices": [
+    {
+      "_id": "gcixz4ypmmxvzb1h",
+      "createdAt": "2026-03-19T19:52:00.677Z",
+      "updatedAt": "2026-03-19T19:55:40.179Z",
+      "name": "Business Upscalling",
+      "brand": "LALA TECH",
+      "model": "SM-A135F/DSN",
+      "color": "Gold",
+      "serialNumber": "1111111111",
+      "imei": "111111111111111",
+      "category": "smartphone",
+      "specs": {
+        "imei": "111111111111111"
+      },
+      "currentOwner": "nr3gwytpmmxqfp39",
+      "deviceImage": "",
+      "history": [
+        {
+          "previousOwner": "6ho7ox18mmxqa9kl",
+          "newOwner": "nr3gwytpmmxqfp39",
+          "transferDate": 1773950140175,
+          "comment": "sold to him"
+        }
+      ],
+      "status": "lost",
+      "statusComment": "lost the phone"
+    }
+  ],
+  "transfers": [
+    {
+      "_id": "09b7mwvgmmxw1fql",
+      "createdAt": "2026-03-19T19:53:40.077Z",
+      "updatedAt": "2026-03-19T19:55:40.176Z",
+      "device": "gcixz4ypmmxvzb1h",
+      "initiator": "6ho7ox18mmxqa9kl",
+      "targetUserEmail": "tech@traceit.com.ng",
+      "targetUser": "nr3gwytpmmxqfp39",
+      "comment": "sold to him",
+      "status": "accepted"
+    }
+  ],
   "payments": [
     {
       "_id": "4s1e89akmmxtoq2z",
@@ -56,6 +96,16 @@
       "type": "nin_verification",
       "status": "success",
       "reference": "traceit-nin-6ho7ox18mmxqa9kl-1773946261368"
+    },
+    {
+      "_id": "w9aps0odmmxw6v3c",
+      "createdAt": "2026-03-19T19:57:53.256Z",
+      "updatedAt": "2026-03-19T19:57:53.256Z",
+      "user": "6ho7ox18mmxqa9kl",
+      "amount": 500,
+      "type": "search",
+      "status": "success",
+      "reference": "search-6ho7ox18mmxqa9kl-1773950207707"
     }
   ],
   "searchLogs": []

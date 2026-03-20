@@ -1,34 +1,14 @@
-import JsonDB from '../utils/jsonDb.js';
+import mongoose from 'mongoose';
 
-const db = new JsonDB('payments');
+const paymentSchema = new mongoose.Schema({
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    amount: { type: Number, required: true },
+    type: { type: String, required: true },
+    status: { type: String, enum: ['pending', 'success', 'failed'], default: 'pending' },
+    reference: { type: String, required: true, unique: true }
+}, {
+    timestamps: true
+});
 
-const Payment = {
-    async create(data) {
-        data.status = data.status || 'pending';
-        return db.create(data);
-    },
-    
-    async find(query) {
-        const results = await db.find(query);
-        results.populate = function() { return this; };
-        return results;
-    },
-
-    async findOne(query) {
-        return db.findOne(query);
-    },
-
-    async findById(id) {
-        return db.findById(id);
-    },
-    
-    async findByIdAndUpdate(id, data, options) {
-        return db.findByIdAndUpdate(id, data, options);
-    },
-
-    async updateMany(query, data) {
-        return db.updateMany(query, data);
-    }
-};
-
+const Payment = mongoose.model('Payment', paymentSchema);
 export default Payment;
