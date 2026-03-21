@@ -44,14 +44,11 @@ export default function WhatsAppButton() {
                             />
                         </defs>
                         <text
-                            fill="white"
-                            fontSize="11"
+                            fill="#f97316"
+                            fontSize="12"
                             fontWeight="900"
                             letterSpacing="2"
-                            style={{ 
-                                textShadow: '0 0 6px #f97316, 0 0 12px #f97316, 0 0 20px #ea580c',
-                                opacity: 1
-                            }}
+
                         >
                             <textPath href="#textCurve" startOffset="50%" textAnchor="middle" dominantBaseline="middle">
                                 WE ARE HERE
