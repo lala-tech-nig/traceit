@@ -56,9 +56,7 @@ export default function RegisterPage() {
         <div className="min-h-screen bg-neutral-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-[family-name:var(--font-geist-sans)]">
             <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
                 <Link href="/" className="inline-flex items-center gap-2 mb-6">
-                    <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center font-bold text-white text-xl">
-                        T
-                    </div>
+                    <img src="/logo.png" alt="TraceIt Logo" className="w-10 h-10 object-contain" />
                     <span className="text-3xl font-bold tracking-tight text-foreground">Trace<span className="text-primary">It</span></span>
                 </Link>
                 <h2 className="text-center text-3xl font-extrabold text-foreground">

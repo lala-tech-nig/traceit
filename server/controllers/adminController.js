@@ -92,21 +92,37 @@ export const getAdminStats = async (req, res) => {
 // @access  Private/Admin
 export const getAllUsers = async (req, res) => {
     try {
-        const { sort = '-createdAt', role, isApproved } = req.query;
+        const { sort = '-createdAt', role, isApproved, isVerified } = req.query;
         
         const filter = {};
         if (role) filter.role = role;
-        if (isApproved) filter.isApproved = isApproved === 'true';
+        if (isApproved !== undefined) filter.isApproved = isApproved === 'true';
+        if (isVerified !== undefined) filter.ninVerified = isVerified === 'true';
 
-        const rawUsers = await User.find(filter);
+        const rawUsers = await User.find(filter).lean();
+        const allPayments = await Payment.find({ status: 'success' }).lean();
+
+        const paymentMap = {};
+        allPayments.forEach(p => {
+            const uid = p.user.toString();
+            paymentMap[uid] = (paymentMap[uid] || 0) + p.amount;
+        });
+
         let users = rawUsers.map(u => {
             const userObj = { ...u };
             delete userObj.password;
+            userObj.amountPaid = paymentMap[userObj._id.toString()] || 0;
             return userObj;
         });
 
         if (sort === '-createdAt') {
             users.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        } else if (sort === 'createdAt') {
+            users.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        } else if (sort === '-amountPaid') {
+            users.sort((a, b) => b.amountPaid - a.amountPaid);
+        } else if (sort === 'amountPaid') {
+            users.sort((a, b) => a.amountPaid - b.amountPaid);
         }
             
         res.json(users);
@@ -225,5 +241,38 @@ export const downloadBackup = async (req, res) => {
     } catch (error) {
         console.error('Backup generation failed:', error);
         res.status(500).json({ message: 'Backup generation failed: ' + error.message });
+    }
+};
+
+// @desc    Get user admin deep details
+// @route   GET /api/admin/users/:id
+// @access  Private/Admin
+export const getUserAdminDetails = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select('-password').lean();
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        const payments = await Payment.find({ user: user._id }).sort({ createdAt: -1 }).lean();
+        
+        const totalPaid = payments
+            .filter(p => p.status === 'success')
+            .reduce((acc, curr) => acc + curr.amount, 0);
+
+        let subscriptionDaysRemaining = 0;
+        if (user.subscriptionEnd && new Date(user.subscriptionEnd) > new Date()) {
+            const diffTime = Math.abs(new Date(user.subscriptionEnd) - new Date());
+            subscriptionDaysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        }
+
+        res.json({
+            user,
+            payments,
+            totalPaid,
+            subscriptionDaysRemaining
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 };

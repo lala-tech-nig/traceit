@@ -264,7 +264,7 @@ export default function LandingPage() {
       <footer className="py-12 border-t border-neutral-100">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg"></div>
+            <img src="/logo.png" alt="TraceIt Logo" className="w-8 h-8 object-contain" />
             <span className="text-xl font-black tracking-tighter text-neutral-900 uppercase">TraceIt</span>
           </div>
           <p className="text-neutral-500 font-medium text-sm">

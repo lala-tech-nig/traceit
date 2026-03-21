@@ -8,9 +8,7 @@ export default function Navbar() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-2">
                     {/* A simple logo design text */}
-                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center font-bold text-white">
-                        T
-                    </div>
+                    <img src="/logo.png" alt="TraceIt Logo" className="w-8 h-8 object-contain" />
                     <span className="text-xl font-bold tracking-tight text-foreground">Trace<span className="text-primary">It</span></span>
                 </Link>
                 <div className="flex items-center gap-4">

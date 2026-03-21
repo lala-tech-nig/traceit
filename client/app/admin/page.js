@@ -28,9 +28,17 @@ import {
     PlusCircle,
     Edit3,
     ImageIcon,
-    Trash
+    Trash,
+    BarChart2,
+    Globe,
+    MousePointerClick,
+    Timer,
+    LayoutDashboard,
+    Radio,
+    ChevronLeft
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function AdminDashboard() {
     const { user, API_URL } = useAuth();
@@ -62,9 +70,37 @@ export default function AdminDashboard() {
 
     const [reports, setReports] = useState([]);
     const [reportsLoading, setReportsLoading] = useState(false);
+    const [analyticsData, setAnalyticsData] = useState(null);
+    const [analyticsLoading, setAnalyticsLoading] = useState(false);
+    const [analyticsMonth, setAnalyticsMonth] = useState(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    });
+    const [analyticsIPSort, setAnalyticsIPSort] = useState('visits'); // 'visits' | 'lastSeen'
 
     const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
     const [filterRole, setFilterRole] = useState('');
+    const [filterStatus, setFilterStatus] = useState('');
+
+    const [userDetailsLoading, setUserDetailsLoading] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [showUserModal, setShowUserModal] = useState(false);
+
+    const handleViewUserDetails = async (id) => {
+        setUserDetailsLoading(true);
+        setShowUserModal(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            const res = await axios.get(`${API_URL}/admin/users/${id}`, config);
+            setSelectedUser(res.data);
+        } catch (error) {
+            console.error("Failed to fetch user details", error);
+            setMessage({ type: 'error', text: 'Failed to load user info.' });
+            setShowUserModal(false);
+        } finally {
+            setUserDetailsLoading(false);
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -93,7 +129,8 @@ export default function AdminDashboard() {
                 headers: { Authorization: `Bearer ${user.token}` },
                 params: { 
                     sort: `${sortConfig.direction === 'desc' ? '-' : ''}${sortConfig.key}`,
-                    role: filterRole
+                    role: filterRole,
+                    isVerified: filterStatus === 'verified' ? true : filterStatus === 'not_verified' ? false : undefined
                 }
             };
             const res = await axios.get(`${API_URL}/admin/users`, config);
@@ -143,7 +180,24 @@ export default function AdminDashboard() {
         if (activeTab === 'accounts' && user) fetchAllUsers();
         if (activeTab === 'reports' && user) fetchReports();
         if (activeTab === 'ads' && user) fetchAds();
-    }, [activeTab, sortConfig, filterRole]);
+        if (activeTab === 'analytics' && user) fetchAnalytics();
+    }, [activeTab, sortConfig, filterRole, filterStatus]);
+
+    const fetchAnalytics = async (month, sortBy) => {
+        setAnalyticsLoading(true);
+        try {
+            const config = {
+                headers: { Authorization: `Bearer ${user.token}` },
+                params: { month: month || analyticsMonth, sortBy: sortBy || analyticsIPSort }
+            };
+            const res = await axios.get(`${API_URL}/analytics/admin`, config);
+            setAnalyticsData(res.data);
+        } catch (error) {
+            console.error('Failed to fetch analytics', error);
+        } finally {
+            setAnalyticsLoading(false);
+        }
+    };
 
     const resetAdForm = () => {
         setAdForm({ 
@@ -277,61 +331,97 @@ export default function AdminDashboard() {
     };
 
     if (loading && !stats) {
-        return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+        return <div className="flex items-center justify-center min-h-screen bg-neutral-50"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
     }
 
+    const navItems = [
+        { id: 'overview',   label: 'Platform Overview',     icon: LayoutDashboard },
+        { id: 'accounts',   label: 'All Accounts',          icon: Users },
+        { id: 'approvals',  label: `Approvals (${pendingUsers.length})`, icon: Clock },
+        { id: 'reports',    label: 'Device Reports',        icon: ShieldAlert },
+        { id: 'ads',        label: 'Broadcast Ads',         icon: Radio },
+        { id: 'logs',       label: 'Activity Logs',         icon: SearchCode },
+        { id: 'analytics',  label: 'Platform Analytics',    icon: BarChart2 },
+    ];
+
     return (
-        <div className="max-w-7xl mx-auto space-y-10 pb-20">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <h1 className="text-4xl font-black text-foreground mb-2">Super Admin Control</h1>
-                    <p className="text-neutral-500 font-medium">Platform overview, financial tracking, and account management.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <button 
-                        onClick={handleDownloadBackup}
-                        className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-white border border-amber-600 rounded-2xl font-bold hover:bg-amber-600 transition-all text-sm shadow-md shadow-amber-500/20"
-                    >
-                        <Download className="w-4 h-4" />
-                        Download Backup
-                    </button>
-                    <button 
-                        onClick={() => activeTab === 'accounts' ? fetchAllUsers() : fetchData()}
-                        className="flex items-center gap-2 px-6 py-3 bg-white border border-neutral-200 rounded-2xl font-bold hover:bg-neutral-50 transition-all text-sm"
-                    >
-                        <RefreshCw className={`w-4 h-4 ${(loading || usersLoading) ? 'animate-spin' : ''}`} />
-                        Refresh Data
-                    </button>
-                </div>
-            </div>
+        <div className="flex min-h-screen bg-neutral-100 font-[family-name:var(--font-geist-sans)]">
 
-            {/* Navigation Tabs */}
-            <div className="flex flex-wrap gap-2 p-1.5 bg-neutral-100 w-fit rounded-2xl">
-                {[
-                    { id: 'overview', label: 'Platform Overview', icon: Activity },
-                    { id: 'accounts', label: 'All Accounts', icon: Users },
-                    { id: 'approvals', label: `Pending Approvals (${pendingUsers.length})`, icon: Clock },
-                    { id: 'reports', label: 'Device Reports', icon: ShieldAlert },
-                    { id: 'ads', label: 'Broadcast Ad', icon: Megaphone },
-                    { id: 'logs', label: 'Activity Logs', icon: SearchCode }
-                ].map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === tab.id ? 'bg-white text-primary shadow-sm' : 'text-neutral-500 hover:text-foreground'}`}
-                    >
-                        <tab.icon className="w-4 h-4" />
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
-
-            {message.text && (
-                <div className={`p-4 rounded-2xl font-bold ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                    {message.text}
+            {/* ── Sidebar ───────────────────────────────────────────── */}
+            <aside className="w-64 shrink-0 bg-[#0f0f11] text-white flex flex-col sticky top-0 h-screen overflow-y-auto">
+                {/* Logo */}
+                <div className="px-7 pt-8 pb-6 border-b border-white/10">
+                    <div className="flex items-center gap-2.5">
+                        <img src="/logo.png" alt="TraceIt Logo" className="w-8 h-8 object-contain" />
+                        <span className="text-lg font-black tracking-tight">Trace<span className="text-primary">It</span> <span className="text-[10px] uppercase tracking-widest text-white/30 font-bold">Admin</span></span>
+                    </div>
                 </div>
-            )}
+
+                {/* Nav Items */}
+                <nav className="flex-1 px-3 py-6 space-y-0.5">
+                    {navItems.map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => setActiveTab(item.id)}
+                            className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
+                                activeTab === item.id
+                                    ? 'bg-primary text-white shadow-lg shadow-primary/25'
+                                    : 'text-white/50 hover:text-white hover:bg-white/5'
+                            }`}
+                        >
+                            <item.icon className="w-4.5 h-4.5 shrink-0" style={{width:'1.1rem',height:'1.1rem'}} />
+                            {item.label}
+                        </button>
+                    ))}
+                </nav>
+
+                {/* Footer */}
+                <div className="px-3 pb-6 border-t border-white/10 pt-4 space-y-1">
+                    <Link href="/dashboard" className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/40 hover:text-white hover:bg-white/5 font-bold text-sm transition-all">
+                        <ChevronLeft className="w-4 h-4" /> Back to Platform
+                    </Link>
+                    <div className="flex items-center gap-3 px-4 py-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-black text-sm">
+                            {user?.firstName?.charAt(0)}
+                        </div>
+                        <div className="overflow-hidden">
+                            <p className="text-xs font-black text-white truncate">{user?.firstName} {user?.lastName}</p>
+                            <p className="text-[10px] text-white/30 font-bold uppercase tracking-wider">Super Admin</p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            {/* ── Main Content ─────────────────────────────────────── */}
+            <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
+
+                {/* Sticky Header */}
+                <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-neutral-200/70 px-8 py-4 flex items-center justify-between">
+                    <div>
+                        <h1 className="text-xl font-black text-foreground">{navItems.find(n=>n.id===activeTab)?.label || 'Super Admin'}</h1>
+                        <p className="text-xs font-medium text-neutral-400 mt-0.5">TraceIt Super Admin Control Panel</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {message.text && (
+                            <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${ message.type==='success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700' }`}>{message.text}</span>
+                        )}
+                        <button 
+                            onClick={handleDownloadBackup}
+                            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 transition-all text-xs shadow-md shadow-amber-500/20"
+                        >
+                            <Download className="w-3.5 h-3.5" /> Backup
+                        </button>
+                        <button 
+                            onClick={() => activeTab === 'accounts' ? fetchAllUsers() : activeTab === 'analytics' ? fetchAnalytics() : fetchData()}
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-neutral-200 rounded-xl font-bold hover:bg-neutral-50 transition-all text-xs"
+                        >
+                            <RefreshCw className={`w-3.5 h-3.5 ${loading||usersLoading||analyticsLoading ? 'animate-spin' : ''}`} /> Refresh
+                        </button>
+                    </div>
+                </header>
+
+                {/* Scrollable Content Pane */}
+                <main className="flex-1 overflow-y-auto p-8 space-y-8">
 
             {activeTab === 'overview' && (
                 <div className="space-y-10 animate-in fade-in duration-500">
@@ -440,6 +530,18 @@ export default function AdminDashboard() {
                                 <div className="relative">
                                     <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                                     <select 
+                                        value={filterStatus}
+                                        onChange={(e) => setFilterStatus(e.target.value)}
+                                        className="pl-9 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-bold outline-none focus:border-primary appearance-none"
+                                    >
+                                        <option value="">All Status</option>
+                                        <option value="verified">Verified</option>
+                                        <option value="not_verified">Not Verified</option>
+                                    </select>
+                                </div>
+                                <div className="relative">
+                                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                    <select 
                                         value={filterRole}
                                         onChange={(e) => setFilterRole(e.target.value)}
                                         className="pl-9 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-bold outline-none focus:border-primary appearance-none"
@@ -468,6 +570,9 @@ export default function AdminDashboard() {
                                         <th className="px-8 py-4 cursor-pointer hover:text-foreground transition-colors" onClick={() => handleSort('createdAt')}>
                                             <div className="flex items-center gap-2">Joined <ArrowUpDown className="w-3 h-3" /></div>
                                         </th>
+                                        <th className="px-8 py-4 cursor-pointer hover:text-foreground transition-colors" onClick={() => handleSort('amountPaid')}>
+                                            <div className="flex items-center gap-2">Total Paid <ArrowUpDown className="w-3 h-3" /></div>
+                                        </th>
                                         <th className="px-8 py-4">Status</th>
                                         <th className="px-8 py-4 text-right">Actions</th>
                                     </tr>
@@ -486,8 +591,8 @@ export default function AdminDashboard() {
                                             </td>
                                         </tr>
                                     ) : (
-                                        allUsers.map(u => (
-                                            <tr key={u._id} className="hover:bg-neutral-50/50 transition-colors group">
+                                        allUsers.map((u, i) => (
+                                            <tr key={u._id || `user-${i}`} className="hover:bg-neutral-50/50 transition-colors group">
                                                 <td className="px-8 py-5">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-9 h-9 bg-neutral-100 text-neutral-500 flex items-center justify-center rounded-full font-black text-xs">
@@ -512,6 +617,9 @@ export default function AdminDashboard() {
                                                 <td className="px-8 py-5 text-sm font-medium text-neutral-600">
                                                     {new Date(u.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                                                 </td>
+                                                <td className="px-8 py-5 text-sm font-bold text-foreground">
+                                                    ₦{(u.amountPaid || 0).toLocaleString()}
+                                                </td>
                                                 <td className="px-8 py-5">
                                                     <div className="flex flex-col gap-1">
                                                         {u.isApproved ? (
@@ -525,7 +633,12 @@ export default function AdminDashboard() {
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-5 text-right">
-                                                    <button className="text-neutral-400 hover:text-primary font-bold text-xs transition-colors">Details</button>
+                                                    <button 
+                                                        onClick={() => handleViewUserDetails(u._id)}
+                                                        className="text-neutral-400 hover:text-primary font-bold text-xs transition-colors"
+                                                    >
+                                                        Details
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))
@@ -912,9 +1025,388 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             )}
+                    {activeTab === 'analytics' && (
+                        <div className="animate-in fade-in duration-500 space-y-6">
+
+                            {/* Filter Bar */}
+                            <div className="bg-white rounded-2xl border border-neutral-200 px-6 py-4 flex flex-wrap items-center gap-4 shadow-sm">
+                                <div>
+                                    <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1.5">Month</label>
+                                    <input
+                                        type="month"
+                                        value={analyticsMonth}
+                                        onChange={e => {
+                                            setAnalyticsMonth(e.target.value);
+                                            fetchAnalytics(e.target.value, analyticsIPSort);
+                                        }}
+                                        className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-bold outline-none focus:border-primary transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1.5">Sort IPs By</label>
+                                    <div className="flex rounded-xl overflow-hidden border border-neutral-200 text-xs font-black">
+                                        {[['visits','Total Visits'],['lastSeen','Last Seen']].map(([val, label]) => (
+                                            <button
+                                                key={val}
+                                                onClick={() => { setAnalyticsIPSort(val); fetchAnalytics(analyticsMonth, val); }}
+                                                className={`px-4 py-2 transition-all ${analyticsIPSort === val ? 'bg-primary text-white' : 'bg-neutral-50 text-neutral-500 hover:bg-neutral-100'}`}
+                                            >{label}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => fetchAnalytics(analyticsMonth, analyticsIPSort)}
+                                    className="ml-auto flex items-center gap-2 px-5 py-2.5 bg-neutral-900 text-white rounded-xl font-bold text-xs hover:bg-black transition-all"
+                                >
+                                    <RefreshCw className={`w-3.5 h-3.5 ${analyticsLoading ? 'animate-spin' : ''}`} />
+                                    Reload Data
+                                </button>
+                            </div>
+
+                            {analyticsLoading ? (
+                                <div className="flex items-center justify-center py-24"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>
+                            ) : !analyticsData ? (
+                                <div className="bg-white rounded-3xl p-16 text-center border border-neutral-200">
+                                    <BarChart2 className="w-12 h-12 text-neutral-200 mx-auto mb-4" />
+                                    <p className="font-bold text-neutral-500">No analytics data yet. Users must visit the platform first.</p>
+                                    <button onClick={() => fetchAnalytics(analyticsMonth, analyticsIPSort)} className="mt-4 px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm hover:bg-primary/90 transition-all">Load Analytics</button>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* KPI Cards */}
+                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+                                        <StatCard icon={Activity}  label="Active Now"      value={analyticsData.activeNow}     trend="in the last 5 min"   color="green"  />
+                                        <StatCard icon={Globe}     label="This Month"      value={analyticsData.monthSessions} trend={analyticsMonth}       color="blue"   />
+                                        <StatCard icon={Users}     label="Unique IPs (Month)" value={analyticsData.uniqueIPsMonth} trend={`${analyticsData.uniqueIPsAll} all time`} color="indigo" />
+                                        <StatCard icon={Timer}     label="Avg. Session"    value={`${Math.floor(analyticsData.avgTimeSpent/60)}m ${analyticsData.avgTimeSpent%60}s`} trend="per visit" color="purple" />
+                                    </div>
+
+                                    {/* Charts Row */}
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {/* Daily Activity Chart */}
+                                        <div className="bg-white rounded-3xl border border-neutral-200 p-7 shadow-sm">
+                                            <h3 className="text-base font-black text-foreground mb-1">Sessions — Last 7 Days</h3>
+                                            <p className="text-xs text-neutral-400 font-medium mb-5">Daily visitor count</p>
+                                            <div className="flex items-end gap-2 h-36">
+                                                {analyticsData.dailyActivity.length === 0 ? (
+                                                    <p className="text-neutral-300 font-bold text-sm m-auto">No data yet</p>
+                                                ) : analyticsData.dailyActivity.map((d, i) => {
+                                                    const max = Math.max(...analyticsData.dailyActivity.map(x => x.sessions), 1);
+                                                    const pct = Math.max((d.sessions / max) * 100, 4);
+                                                    return (
+                                                        <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
+                                                            <span className="hidden group-hover:block text-[9px] font-black text-primary">{d.sessions}</span>
+                                                            <div title={`${d.sessions} sessions`} className="w-full bg-primary rounded-t-lg transition-all duration-500 hover:bg-primary/80" style={{ height: `${pct}%`, minHeight: '6px', maxHeight: '130px' }} />
+                                                            <span className="text-[9px] text-neutral-400 font-bold">{d._id?.slice(5)}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* Monthly Breakdown Chart */}
+                                        <div className="bg-white rounded-3xl border border-neutral-200 p-7 shadow-sm">
+                                            <h3 className="text-base font-black text-foreground mb-1">Monthly Sessions</h3>
+                                            <p className="text-xs text-neutral-400 font-medium mb-5">Last 12 months comparison</p>
+                                            <div className="flex items-end gap-2 h-36">
+                                                {analyticsData.monthlyBreakdown.length === 0 ? (
+                                                    <p className="text-neutral-300 font-bold text-sm m-auto">No data yet</p>
+                                                ) : [...analyticsData.monthlyBreakdown].reverse().map((m, i) => {
+                                                    const max = Math.max(...analyticsData.monthlyBreakdown.map(x => x.sessions), 1);
+                                                    const pct = Math.max((m.sessions / max) * 100, 4);
+                                                    const isSelected = m._id === analyticsMonth;
+                                                    return (
+                                                        <div key={i} className="flex-1 flex flex-col items-center gap-1 group cursor-pointer" onClick={() => { setAnalyticsMonth(m._id); fetchAnalytics(m._id, analyticsIPSort); }}>
+                                                            <span className="hidden group-hover:block text-[9px] font-black text-indigo-500">{m.sessions}</span>
+                                                            <div title={`${m.sessions} sessions in ${m._id}`} className={`w-full rounded-t-lg transition-all duration-500 ${isSelected ? 'bg-primary' : 'bg-indigo-300 hover:bg-indigo-500'}`} style={{ height: `${pct}%`, minHeight: '6px', maxHeight: '130px' }} />
+                                                            <span className={`text-[9px] font-bold ${isSelected ? 'text-primary' : 'text-neutral-400'}`}>{m._id?.slice(5)}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                        {/* Top Pages */}
+                                        <div className="bg-white rounded-3xl border border-neutral-200 p-7 shadow-sm">
+                                            <h3 className="text-base font-black text-foreground mb-4 flex items-center gap-2"><Activity className="w-4 h-4 text-neutral-300" /> Most Visited Pages</h3>
+                                            <div className="space-y-3">
+                                                {analyticsData.topPages.map((p, i) => {
+                                                    const max = Math.max(...analyticsData.topPages.map(x => x.count), 1);
+                                                    return (
+                                                        <div key={i}>
+                                                            <div className="flex justify-between mb-1">
+                                                                <span className="text-xs font-bold text-neutral-700 truncate max-w-[160px]">{p._id}</span>
+                                                                <span className="text-xs font-black text-neutral-400">{p.count}</span>
+                                                            </div>
+                                                            <div className="h-1.5 w-full bg-neutral-100 rounded-full overflow-hidden">
+                                                                <div className="h-full bg-primary rounded-full" style={{ width: `${(p.count / max) * 100}%` }} />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                                {analyticsData.topPages.length === 0 && <p className="text-neutral-400 text-sm font-medium">No page data yet.</p>}
+                                            </div>
+                                        </div>
+
+                                        {/* Top Clicks */}
+                                        <div className="bg-white rounded-3xl border border-neutral-200 p-7 shadow-sm">
+                                            <h3 className="text-base font-black text-foreground mb-4 flex items-center gap-2"><MousePointerClick className="w-4 h-4 text-neutral-300" /> Top Button Clicks</h3>
+                                            <div className="space-y-3">
+                                                {analyticsData.topEvents.map((ev, i) => (
+                                                    <div key={i} className="flex items-center justify-between gap-2">
+                                                        <span className="text-xs font-bold text-neutral-700 truncate max-w-[160px]">{ev._id || 'unknown'}</span>
+                                                        <span className="text-xs font-black px-2 py-0.5 bg-primary/10 text-primary rounded-lg shrink-0">{ev.count}×</span>
+                                                    </div>
+                                                ))}
+                                                {analyticsData.topEvents.length === 0 && <p className="text-neutral-400 text-sm font-medium">No click data yet.</p>}
+                                            </div>
+                                        </div>
+
+                                        {/* Hourly activity small chart */}
+                                        <div className="bg-white rounded-3xl border border-neutral-200 p-7 shadow-sm">
+                                            <h3 className="text-base font-black text-foreground mb-1">Last 24 Hours</h3>
+                                            <p className="text-xs text-neutral-400 font-medium mb-5">Hourly sessions</p>
+                                            <div className="flex items-end gap-0.5 h-28">
+                                                {analyticsData.hourlyActivity.length === 0 ? (
+                                                    <p className="text-neutral-300 font-bold text-sm m-auto">No data</p>
+                                                ) : analyticsData.hourlyActivity.map((h, i) => {
+                                                    const max = Math.max(...analyticsData.hourlyActivity.map(x => x.sessions), 1);
+                                                    const pct = Math.max((h.sessions / max) * 100, 4);
+                                                    return (
+                                                        <div key={i} className="flex-1 group" title={`${h.sessions} at ${h._id?.slice(11)}`}>
+                                                            <div className="w-full bg-indigo-400 rounded-t-sm hover:bg-indigo-600 transition-all" style={{ height: `${pct}%`, minHeight: '3px', maxHeight: '108px' }} />
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* IP Address Table — sortable, with monthly visit count & user identity */}
+                                    <div className="bg-white rounded-3xl border border-neutral-200 overflow-hidden shadow-sm">
+                                        <div className="p-7 border-b border-neutral-100 flex items-center justify-between">
+                                            <div>
+                                                <h3 className="text-base font-black text-foreground flex items-center gap-2"><Globe className="w-4 h-4 text-neutral-300" /> IP Address Report</h3>
+                                                <p className="text-xs text-neutral-400 font-medium mt-1">All visitors — sortable by frequency or recency. Click column headers to re-sort.</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => { setAnalyticsIPSort('visits'); fetchAnalytics(analyticsMonth, 'visits'); }} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${analyticsIPSort === 'visits' ? 'bg-primary text-white' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'}`}>
+                                                    By Visits
+                                                </button>
+                                                <button onClick={() => { setAnalyticsIPSort('lastSeen'); fetchAnalytics(analyticsMonth, 'lastSeen'); }} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${analyticsIPSort === 'lastSeen' ? 'bg-primary text-white' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'}`}>
+                                                    By Recent
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead>
+                                                    <tr className="bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-widest border-b border-neutral-100">
+                                                        <th className="px-7 py-3">#</th>
+                                                        <th className="px-7 py-3">IP Address</th>
+                                                        <th className="px-7 py-3">Associated User</th>
+                                                        <th className="px-7 py-3 cursor-pointer hover:text-primary" onClick={() => { setAnalyticsIPSort('visits'); fetchAnalytics(analyticsMonth, 'visits'); }}>Total Visits ↕</th>
+                                                        <th className="px-7 py-3">This Month</th>
+                                                        <th className="px-7 py-3">First Seen</th>
+                                                        <th className="px-7 py-3 cursor-pointer hover:text-primary" onClick={() => { setAnalyticsIPSort('lastSeen'); fetchAnalytics(analyticsMonth, 'lastSeen'); }}>Last Active ↕</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-neutral-50">
+                                                    {analyticsData.topIPs.length === 0 ? (
+                                                        <tr><td colSpan="7" className="px-7 py-16 text-center text-neutral-400 font-bold">No IP data recorded yet.</td></tr>
+                                                    ) : analyticsData.topIPs.map((ip, i) => (
+                                                        <tr key={`ip-${i}`} className="hover:bg-neutral-50/60 transition-colors">
+                                                            <td className="px-7 py-4 text-xs font-black text-neutral-300">{i + 1}</td>
+                                                            <td className="px-7 py-4 font-mono text-xs font-bold text-neutral-800">{ip._id || 'unknown'}</td>
+                                                            <td className="px-7 py-4">
+                                                                {ip.userId ? (
+                                                                    <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-lg">Logged In</span>
+                                                                ) : (
+                                                                    <span className="text-xs font-medium text-neutral-400">Guest</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-7 py-4">
+                                                                <span className="text-sm font-black text-foreground">{ip.totalVisits}</span>
+                                                            </td>
+                                                            <td className="px-7 py-4">
+                                                                <span className={`text-xs font-black px-2 py-0.5 rounded-lg ${ip.monthVisits > 0 ? 'bg-primary/10 text-primary' : 'bg-neutral-100 text-neutral-400'}`}>
+                                                                    {ip.monthVisits}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-7 py-4 text-xs text-neutral-400 font-medium">
+                                                                {ip.firstSeen ? new Date(ip.firstSeen).toLocaleDateString() : '—'}
+                                                            </td>
+                                                            <td className="px-7 py-4 text-xs text-neutral-500 font-medium">
+                                                                {ip.lastSeen ? new Date(ip.lastSeen).toLocaleString() : '—'}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    {/* Recent Sessions Table */}
+                                    <div className="bg-white rounded-3xl border border-neutral-200 overflow-hidden shadow-sm">
+                                        <div className="p-7 border-b border-neutral-100">
+                                            <h3 className="text-base font-black text-foreground">Recent Sessions</h3>
+                                            <p className="text-xs text-neutral-400 font-medium mt-1">Individual visitor sessions for {analyticsMonth} — guests and logged-in users.</p>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead>
+                                                    <tr className="bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-widest border-b border-neutral-100">
+                                                        <th className="px-7 py-3">IP Address</th>
+                                                        <th className="px-7 py-3">User</th>
+                                                        <th className="px-7 py-3">Pages Visited</th>
+                                                        <th className="px-7 py-3">Time Spent</th>
+                                                        <th className="px-7 py-3">Last Active</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-neutral-50">
+                                                    {analyticsData.recentSessions.length === 0 ? (
+                                                        <tr><td colSpan="5" className="px-7 py-16 text-center text-neutral-400 font-bold">No sessions recorded for this period.</td></tr>
+                                                    ) : analyticsData.recentSessions.map((s) => (
+                                                        <tr key={s.sessionId || s._id} className="hover:bg-neutral-50/50 transition-colors">
+                                                            <td className="px-7 py-4 font-mono text-xs font-bold text-neutral-700">{s.ipAddress}</td>
+                                                            <td className="px-7 py-4">
+                                                                {s.userId ? (
+                                                                    <div>
+                                                                        <p className="text-xs font-bold text-foreground">{s.userId.firstName} {s.userId.lastName}</p>
+                                                                        <p className="text-[10px] text-neutral-400 font-medium">{s.userId.role}</p>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-xs font-medium text-neutral-400 italic">Guest</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-7 py-4">
+                                                                <div className="flex flex-wrap gap-1 max-w-[220px]">
+                                                                    {s.pagesVisited.slice(0, 3).map((pg, j) => (
+                                                                        <span key={`pg-${j}`} className="text-[10px] font-bold bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-md truncate max-w-[120px]">{pg}</span>
+                                                                    ))}
+                                                                    {s.pagesVisited.length > 3 && <span key="overflow" className="text-[10px] font-bold text-primary">+{s.pagesVisited.length - 3}</span>}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-7 py-4 text-xs font-bold text-neutral-700">
+                                                                {Math.floor(s.timeSpentSeconds / 60)}m {s.timeSpentSeconds % 60}s
+                                                            </td>
+                                                            <td className="px-7 py-4 text-xs text-neutral-400 font-medium">
+                                                                {new Date(s.lastActive).toLocaleString()}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+
+
+                {/* User Details Modal */}
+                {showUserModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="bg-white rounded-[2.5rem] w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+                            <div className="flex items-center justify-between p-6 border-b border-neutral-100">
+                                <h3 className="text-xl font-black text-foreground flex items-center gap-2">
+                                    <Users className="w-5 h-5 text-primary" /> User Details
+                                </h3>
+                                <button onClick={() => setShowUserModal(false)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-neutral-100 text-neutral-500 hover:bg-neutral-200 hover:text-foreground transition-colors">
+                                    <XCircle className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 bg-neutral-50/50">
+                                {userDetailsLoading ? (
+                                    <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>
+                                ) : selectedUser ? (
+                                    <div className="space-y-8">
+                                        <div className="flex items-center gap-4 bg-white p-6 rounded-[1.5rem] border border-neutral-200 shadow-sm">
+                                            <div className="w-14 h-14 bg-primary/10 text-primary flex items-center justify-center rounded-2xl font-black text-xl">
+                                                {selectedUser.user?.firstName?.charAt(0) || 'U'}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-black text-lg text-foreground">{selectedUser.user?.firstName} {selectedUser.user?.lastName}</h4>
+                                                <p className="text-sm font-medium text-neutral-500">{selectedUser.user?.email}</p>
+                                                <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mt-1">{selectedUser.user?.role}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Header Stats */}
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            <div className="bg-white p-5 rounded-[1.5rem] border border-neutral-200 shadow-sm text-center">
+                                                <p className="text-[10px] font-black uppercase text-neutral-400 mb-1 tracking-widest">Total Paid</p>
+                                                <p className="text-xl font-black text-primary">₦{(selectedUser.totalPaid || 0).toLocaleString()}</p>
+                                            </div>
+                                            <div className="bg-white p-5 rounded-[1.5rem] border border-neutral-200 shadow-sm text-center">
+                                                <p className="text-[10px] font-black uppercase text-neutral-400 mb-1 tracking-widest">Sub Days Left</p>
+                                                <p className="text-xl font-black text-amber-500">{selectedUser.subscriptionDaysRemaining || 0}</p>
+                                            </div>
+                                            <div className="bg-white p-5 rounded-[1.5rem] border border-neutral-200 shadow-sm text-center">
+                                                <p className="text-[10px] font-black uppercase text-neutral-400 mb-1 tracking-widest">Transfer Count</p>
+                                                <p className="text-xl font-black text-indigo-500">{selectedUser.user?.transferCount || 0}</p>
+                                            </div>
+                                            <div className="bg-white p-5 rounded-[1.5rem] border border-neutral-200 shadow-sm text-center">
+                                                <p className="text-[10px] font-black uppercase text-neutral-400 mb-1 tracking-widest">Verified</p>
+                                                <div className="mt-1 flex justify-center">
+                                                    {selectedUser.user?.ninVerified ? <CheckCircle className="w-6 h-6 text-green-500"/> : <XCircle className="w-6 h-6 text-red-500"/>}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Recent Payments Table */}
+                                        <div className="bg-white rounded-[2rem] border border-neutral-200 overflow-hidden shadow-sm">
+                                            <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
+                                                <h4 className="text-sm font-black text-foreground">Payment History</h4>
+                                                <span className="text-xs font-bold text-neutral-400 bg-neutral-100 px-3 py-1 rounded-full">{selectedUser.payments?.length || 0} Records</span>
+                                            </div>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left border-collapse">
+                                                    <thead>
+                                                        <tr className="bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-widest border-b border-neutral-100">
+                                                            <th className="px-6 py-4">Date</th>
+                                                            <th className="px-6 py-4">Reference</th>
+                                                            <th className="px-6 py-4">Amount</th>
+                                                            <th className="px-6 py-4">Type</th>
+                                                            <th className="px-6 py-4">Status</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-neutral-50">
+                                                        {(!selectedUser.payments || selectedUser.payments.length === 0) ? (
+                                                            <tr><td colSpan="5" className="px-6 py-10 text-center text-neutral-400 font-bold text-xs">No payments found.</td></tr>
+                                                        ) : selectedUser.payments.map((p, i) => (
+                                                            <tr key={i} className="hover:bg-neutral-50/50">
+                                                                <td className="px-6 py-4 text-xs font-medium text-neutral-600">{new Date(p.createdAt).toLocaleDateString()}</td>
+                                                                <td className="px-6 py-4 text-xs font-mono font-bold text-neutral-800">{p.reference}</td>
+                                                                <td className="px-6 py-4 text-xs font-black text-foreground">₦{(p.amount || 0).toLocaleString()}</td>
+                                                                <td className="px-6 py-4 text-[10px] font-black uppercase text-neutral-400 tracking-wider">{p.type}</td>
+                                                                <td className="px-6 py-4">
+                                                                    <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${p.status === 'success' ? 'bg-green-50 text-green-600' : p.status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>{p.status}</span>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex justify-center py-20 text-neutral-400 font-bold">User data missing.</div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                </main>
+            </div>
         </div>
     );
 }
+
 
 function StatCard({ icon: Icon, label, value, trend, color }) {
     const colors = {

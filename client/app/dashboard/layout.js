@@ -113,9 +113,7 @@ export default function DashboardLayout({ children }) {
             {/* Sidebar */}
             <aside className="w-64 bg-white border-r border-neutral-200 hidden md:flex flex-col">
                 <div className="p-6 border-b border-neutral-100 flex items-center gap-2">
-                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center font-bold text-white">
-                        T
-                    </div>
+                    <img src="/logo.png" alt="TraceIt Logo" className="w-8 h-8 object-contain" />
                     <span className="text-xl font-bold tracking-tight text-foreground">Trace<span className="text-primary">It</span></span>
                 </div>
 
@@ -257,7 +255,7 @@ export default function DashboardLayout({ children }) {
                 {/* Mobile Header */}
                 <header className="md:hidden bg-white border-b border-neutral-200 p-4 flex items-center justify-between z-10">
                     <Link href="/" className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center font-bold text-white">T</div>
+                        <img src="/logo.png" alt="TraceIt Logo" className="w-8 h-8 object-contain" />
                         <span className="text-lg font-bold tracking-tight">TraceIt</span>
                     </Link>
                     <button onClick={logout} className="text-red-600 p-2">
