@@ -3,16 +3,18 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud, Users } from 'lucide-react';
 
 export default function RegisterPage() {
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
         phoneNumber: '',
+        homeAddress: '',
         email: '',
         password: '',
         role: 'basic',
+        referralEmail: ''
     });
     const [image, setImage] = useState(null);
     const [error, setError] = useState('');
@@ -38,9 +40,13 @@ export default function RegisterPage() {
         data.append('firstName', formData.firstName);
         data.append('lastName', formData.lastName);
         data.append('phoneNumber', formData.phoneNumber);
+        data.append('homeAddress', formData.homeAddress);
         data.append('email', formData.email);
         data.append('password', formData.password);
         data.append('role', formData.role);
+        if (formData.referralEmail.trim()) {
+            data.append('referralEmail', formData.referralEmail.trim());
+        }
         if (image) {
             data.append('image', image);
         }
@@ -54,7 +60,7 @@ export default function RegisterPage() {
 
     return (
         <div className="min-h-screen bg-neutral-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-[family-name:var(--font-geist-sans)]">
-            <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
+            <div className="sm:mx-auto sm:w-full sm:max-w-lg text-center">
                 <Link href="/" className="inline-flex items-center gap-2 mb-6">
                     <img src="/logo.png" alt="TraceIt Logo" className="w-10 h-10 object-contain" />
                     <span className="text-3xl font-bold tracking-tight text-foreground">Trace<span className="text-primary">It</span></span>
@@ -62,9 +68,10 @@ export default function RegisterPage() {
                 <h2 className="text-center text-3xl font-extrabold text-foreground">
                     Create an account
                 </h2>
+                <p className="text-neutral-500 mt-2 text-sm font-medium">Join the secure gadget registry network</p>
             </div>
 
-            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-lg">
                 <div className="bg-white py-8 px-4 shadow-xl border border-neutral-100 sm:rounded-2xl sm:px-10">
                     <form className="space-y-5" onSubmit={handleSubmit}>
                         {error && (
@@ -73,14 +80,14 @@ export default function RegisterPage() {
                             </div>
                         )}
 
+                        {/* Name Fields */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-semibold text-neutral-700">Your Name</label>
+                                <label className="block text-sm font-semibold text-neutral-700">First Name</label>
                                 <div className="mt-1">
                                     <input name="firstName" type="text" required onChange={handleChange} className="appearance-none block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all sm:text-sm font-medium" placeholder="John" />
                                 </div>
                             </div>
-
                             <div>
                                 <label className="block text-sm font-semibold text-neutral-700">Last Name (Surname)</label>
                                 <div className="mt-1">
@@ -93,6 +100,7 @@ export default function RegisterPage() {
                             ⚠️ Ensure your First Name and Surname exactly match the names on your National Identity Number (NIN). You will be required to verify your NIN after registration.
                         </div>
 
+                        {/* Phone Number */}
                         <div>
                             <label className="block text-sm font-semibold text-neutral-700">Phone Number</label>
                             <div className="mt-1">
@@ -100,6 +108,23 @@ export default function RegisterPage() {
                             </div>
                         </div>
 
+                        {/* Home Address */}
+                        <div>
+                            <label className="block text-sm font-semibold text-neutral-700">Home Address</label>
+                            <div className="mt-1">
+                                <input
+                                    name="homeAddress"
+                                    type="text"
+                                    required
+                                    onChange={handleChange}
+                                    className="appearance-none block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all sm:text-sm font-medium"
+                                    placeholder="No. 5, Adeola Street, Ikeja, Lagos"
+                                />
+                            </div>
+                            <p className="mt-1 text-xs text-neutral-500">Your physical residential address — a field agent may visit to verify.</p>
+                        </div>
+
+                        {/* Email */}
                         <div>
                             <label className="block text-sm font-semibold text-neutral-700">Email address</label>
                             <div className="mt-1">
@@ -107,6 +132,7 @@ export default function RegisterPage() {
                             </div>
                         </div>
 
+                        {/* Password */}
                         <div>
                             <label className="block text-sm font-semibold text-neutral-700">Password</label>
                             <div className="mt-1">
@@ -114,6 +140,7 @@ export default function RegisterPage() {
                             </div>
                         </div>
 
+                        {/* Account Type */}
                         <div>
                             <label className="block text-sm font-semibold text-neutral-700">Account Type</label>
                             <div className="mt-1">
@@ -126,6 +153,25 @@ export default function RegisterPage() {
                             </div>
                         </div>
 
+                        {/* Referral Email */}
+                        <div>
+                            <label className="block text-sm font-semibold text-neutral-700 flex items-center gap-1.5">
+                                <Users className="w-4 h-4 text-primary" />
+                                Referral Email <span className="text-neutral-400 font-normal">(Optional)</span>
+                            </label>
+                            <div className="mt-1">
+                                <input
+                                    name="referralEmail"
+                                    type="email"
+                                    onChange={handleChange}
+                                    className="appearance-none block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all sm:text-sm font-medium"
+                                    placeholder="Email of person who invited you (optional)"
+                                />
+                            </div>
+                            <p className="mt-1 text-xs text-neutral-500">If someone referred you to TraceIt, enter their registered email. They earn ₦100 when you get verified.</p>
+                        </div>
+
+                        {/* Profile Image */}
                         <div>
                             <label className="block text-sm font-semibold text-neutral-700 mb-2">Profile Image</label>
                             <div className="relative border-2 border-dashed border-neutral-300 rounded-xl p-6 flex flex-col items-center justify-center hover:bg-neutral-50 hover:border-primary transition-all cursor-pointer">

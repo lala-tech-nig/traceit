@@ -8,7 +8,10 @@ import {
     getAdminStats,
     getAllUsers,
     downloadBackup,
-    getUserAdminDetails
+    getUserAdminDetails,
+    getWithdrawalRequests,
+    processWithdrawalRequest,
+    setVerificatorTargets
 } from '../controllers/adminController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
@@ -24,4 +27,12 @@ router.get('/pending', protect, admin, getPendingApprovals);
 router.put('/approve/:id', protect, admin, approveUser);
 router.get('/backup', protect, admin, downloadBackup);
 
+// Withdrawal management
+router.get('/withdrawals', protect, admin, getWithdrawalRequests);
+router.put('/withdrawals/:id', protect, admin, processWithdrawalRequest);
+
+// Verificator targets
+router.put('/verificator-targets/:id', protect, admin, setVerificatorTargets);
+
 export default router;
+

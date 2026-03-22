@@ -55,7 +55,11 @@ export const AuthProvider = ({ children }) => {
             const { data } = await axios.post(`${API_URL}/auth/login`, { email, password });
             setUser(data);
             localStorage.setItem('traceit_user', JSON.stringify(data));
-            router.push('/dashboard');
+            if (data.role === 'verificator') {
+                router.push('/verificator');
+            } else {
+                router.push('/dashboard');
+            }
             return { success: true };
         } catch (error) {
             return {

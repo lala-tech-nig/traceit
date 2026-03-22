@@ -17,6 +17,8 @@ import adminRoutes from './routes/adminRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import adRoutes from './routes/adRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import referralRoutes from './routes/referralRoutes.js';
+import verificatorRoutes from './routes/verificatorRoutes.js';
 
 dotenv.config();
 
@@ -36,6 +38,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/ads', adRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/referrals', referralRoutes);
+app.use('/api/verificator', verificatorRoutes);
 
 app.get('/', (req, res) => {
     res.send('TraceIt API is running...');

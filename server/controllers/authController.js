@@ -1,12 +1,45 @@
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
+import Referral from '../models/Referral.js';
+import VerificationJob from '../models/VerificationJob.js';
+
+// Helper: assign a new verification job to the least-loaded available verificator
+const assignVerificationJob = async (newUserId) => {
+    try {
+        // Find all verificators
+        const verificators = await User.find({ role: 'verificator' });
+        if (!verificators.length) return;
+
+        // Find the one with fewest pending jobs
+        const jobCounts = await Promise.all(
+            verificators.map(async (v) => {
+                const count = await VerificationJob.countDocuments({
+                    verificator: v._id,
+                    status: { $in: ['pending', 'accepted'] }
+                });
+                return { verificator: v._id, count };
+            })
+        );
+
+        jobCounts.sort((a, b) => a.count - b.count);
+        const assignedVerificatorId = jobCounts[0].verificator;
+
+        await VerificationJob.create({
+            verificator: assignedVerificatorId,
+            targetUser: newUserId,
+            status: 'pending'
+        });
+    } catch (err) {
+        console.error('Failed to assign verification job:', err.message);
+    }
+};
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
 // @access  Public
 export const registerUser = async (req, res) => {
     try {
-        const { firstName, lastName, phoneNumber, email, password, role, mainVendorId } = req.body;
+        const { firstName, lastName, phoneNumber, homeAddress, email, password, role, mainVendorId, referralEmail } = req.body;
 
         const userExists = await User.findOne({ email });
 
@@ -26,16 +59,40 @@ export const registerUser = async (req, res) => {
             parentVendor = mainVendorId;
         }
 
+        // Referral lookup
+        let referredBy = null;
+        if (referralEmail && referralEmail.trim()) {
+            const referrer = await User.findOne({ email: referralEmail.trim().toLowerCase() });
+            if (referrer) {
+                referredBy = referrer._id;
+            }
+        }
+
         const user = await User.create({
             firstName,
             lastName,
             phoneNumber,
+            homeAddress: homeAddress || '',
             email,
             password,
             role: role || 'basic',
             image: imageUrl,
-            parentVendor
+            parentVendor,
+            referredBy
         });
+
+        // Create a pending referral record if someone referred this user
+        if (referredBy) {
+            await Referral.create({
+                referrer: referredBy,
+                referred: user._id,
+                commissionAmount: 100,
+                status: 'pending'
+            });
+        }
+
+        // Auto-assign a physical verification job to a verificator
+        await assignVerificationJob(user._id);
 
         if (user) {
             res.status(201).json({
@@ -43,6 +100,7 @@ export const registerUser = async (req, res) => {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 phoneNumber: user.phoneNumber,
+                homeAddress: user.homeAddress,
                 email: user.email,
                 role: user.role,
                 image: user.image,
@@ -74,6 +132,7 @@ export const loginUser = async (req, res) => {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 phoneNumber: user.phoneNumber,
+                homeAddress: user.homeAddress,
                 email: user.email,
                 role: user.role,
                 image: user.image,
@@ -104,6 +163,7 @@ export const getUserProfile = async (req, res) => {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 phoneNumber: user.phoneNumber,
+                homeAddress: user.homeAddress,
                 email: user.email,
                 role: user.role,
                 image: user.image,

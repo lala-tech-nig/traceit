@@ -3,7 +3,7 @@
 import { useAuth } from '@/context/AuthContext';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Smartphone, ArrowLeftRight, Activity, ShieldAlert, CreditCard, Fingerprint, ChevronRight, CheckCircle, Loader2, Search, History } from 'lucide-react';
+import { Smartphone, ArrowLeftRight, Activity, ShieldAlert, CreditCard, Fingerprint, ChevronRight, CheckCircle, Loader2, Search, History, Users, Wallet, Banknote, TrendingUp, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { payWithPaystack } from '@/lib/paystack';
 
@@ -14,7 +14,7 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
     const [nin, setNin] = useState('');
-    const [verifyStep, setVerifyStep] = useState(1); // 1: Input NIN, 2: Payment, 3: Pending
+    const [verifyStep, setVerifyStep] = useState(1);
     const [verifyLoading, setVerifyLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -29,21 +29,29 @@ export default function DashboardPage() {
     const [reportLoading, setReportLoading] = useState(false);
     const [reportMsg, setReportMsg] = useState({ type: '', text: '' });
 
+    // Referral state
+    const [referralEarnings, setReferralEarnings] = useState(null);
+    const [myReferrals, setMyReferrals] = useState([]);
+    const [showReferralPanel, setShowReferralPanel] = useState(false);
+    const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+    const [withdrawForm, setWithdrawForm] = useState({ amount: '', bankName: '', accountNumber: '', accountName: '' });
+    const [withdrawLoading, setWithdrawLoading] = useState(false);
+    const [withdrawMsg, setWithdrawMsg] = useState({ type: '', text: '' });
+
     const isRestricted = !user?.isApproved;
+
+    const config = user ? { headers: { Authorization: `Bearer ${user.token}` } } : {};
 
     useEffect(() => {
         const fetchDashboardDetails = async () => {
-            if (!user?.isApproved && !user?.hasPaid) {
-               // Only fetch basic stats if not approved, or skip if restricted
-            }
             try {
                 const token = user?.token;
-                const config = { headers: { Authorization: `Bearer ${token}` } };
+                const cfg = { headers: { Authorization: `Bearer ${token}` } };
 
                 const [devicesRes, transfersRes, adsRes] = await Promise.all([
-                    axios.get(`${API_URL}/devices/mydevices`, config),
-                    axios.get(`${API_URL}/transfers/incoming`, config),
-                    axios.get(`${API_URL}/ads/public/active`, config)
+                    axios.get(`${API_URL}/devices/mydevices`, cfg),
+                    axios.get(`${API_URL}/transfers/incoming`, cfg),
+                    axios.get(`${API_URL}/ads/public/active`, cfg)
                 ]);
 
                 setStats({
@@ -61,8 +69,23 @@ export default function DashboardPage() {
             }
         };
 
+        const fetchReferralData = async () => {
+            try {
+                const cfg = { headers: { Authorization: `Bearer ${user?.token}` } };
+                const [earningsRes, referralsRes] = await Promise.all([
+                    axios.get(`${API_URL}/referrals/my-earnings`, cfg),
+                    axios.get(`${API_URL}/referrals/my-referrals`, cfg)
+                ]);
+                setReferralEarnings(earningsRes.data);
+                setMyReferrals(referralsRes.data);
+            } catch (err) {
+                console.error('Failed to fetch referral data', err);
+            }
+        };
+
         if (user) {
             fetchDashboardDetails();
+            fetchReferralData();
             if (user.hasPaid && !user.isApproved) setVerifyStep(3);
         }
     }, [user, API_URL]);
@@ -83,7 +106,6 @@ export default function DashboardPage() {
         setVerifyLoading(true);
         setError('');
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
             await axios.post(`${API_URL}/admin/submit-nin`, { nin }, config);
             setVerifyStep(2);
         } catch (err) {
@@ -100,11 +122,9 @@ export default function DashboardPage() {
         setSearchError('');
         setSearchResult(null);
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const url = forcedPaymentRef 
+            const url = forcedPaymentRef
                 ? `${API_URL}/devices/search/${searchQuery}?paymentRef=${forcedPaymentRef}`
                 : `${API_URL}/devices/search/${searchQuery}`;
-            
             const res = await axios.get(url, config);
             setSearchResult(res.data);
         } catch (err) {
@@ -133,24 +153,14 @@ export default function DashboardPage() {
                 reference,
                 onSuccess: async ({ reference: paystackRef }) => {
                     try {
-                        const config = { headers: { Authorization: `Bearer ${user.token}` } };
-                        // Verify the payment first
-                        await axios.post(`${API_URL}/payments/verify`, {
-                            reference: paystackRef,
-                            amount: 500,
-                            type: 'search'
-                        }, config);
-                        
-                        // Retry search with the ref
+                        await axios.post(`${API_URL}/payments/verify`, { reference: paystackRef, amount: 500, type: 'search' }, config);
                         handleSearch(null, paystackRef);
                     } catch (err) {
                         setSearchError('Payment verification failed.');
                         setSearchLoading(false);
                     }
                 },
-                onClose: () => {
-                    setSearchLoading(false);
-                }
+                onClose: () => { setSearchLoading(false); }
             });
         } catch (err) {
             setSearchError('Could not initiate payment.');
@@ -160,12 +170,8 @@ export default function DashboardPage() {
 
     const handlePayment = async () => {
         setVerifyLoading(true);
-// ...
-// (We just add the report submit here to keep it organized)
         setError('');
-        
         const reference = `traceit-nin-${user._id}-${Date.now()}`;
-        
         try {
             await payWithPaystack({
                 email: user.email,
@@ -174,17 +180,9 @@ export default function DashboardPage() {
                 reference,
                 onSuccess: async ({ reference: paystackRef }) => {
                     try {
-                        const config = { headers: { Authorization: `Bearer ${user.token}` } };
-                        await axios.post(`${API_URL}/payments/verify`, {
-                            reference: paystackRef,
-                            amount: 500,
-                            type: 'nin_verification'
-                        }, config);
-                        
-                        // Refresh user local state
+                        await axios.post(`${API_URL}/payments/verify`, { reference: paystackRef, amount: 500, type: 'nin_verification' }, config);
                         const profileRes = await axios.get(`${API_URL}/auth/profile`, config);
                         login({ ...user, ...profileRes.data });
-                        
                         setVerifyStep(3);
                     } catch (err) {
                         setError('Payment recorded but verification failed. Please contact support.');
@@ -192,9 +190,7 @@ export default function DashboardPage() {
                         setVerifyLoading(false);
                     }
                 },
-                onClose: () => {
-                    setVerifyLoading(false);
-                }
+                onClose: () => { setVerifyLoading(false); }
             });
         } catch (err) {
             setError('Could not initiate payment. Please check your connection.');
@@ -207,7 +203,6 @@ export default function DashboardPage() {
         setReportLoading(true);
         setReportMsg({ type: '', text: '' });
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
             const res = await axios.post(`${API_URL}/reports`, {
                 deviceId: searchResult._id,
                 address: reportForm.address,
@@ -219,8 +214,6 @@ export default function DashboardPage() {
                 setReportMsg({ type: '', text: '' });
                 setReportForm({ address: '', sellerDescription: '' });
             }, 2500);
-
-            // Fetch profile to update points
             const profileRes = await axios.get(`${API_URL}/auth/profile`, config);
             login({ ...user, ...profileRes.data });
         } catch (err) {
@@ -230,39 +223,48 @@ export default function DashboardPage() {
         }
     };
 
+    const handleWithdrawSubmit = async (e) => {
+        e.preventDefault();
+        setWithdrawLoading(true);
+        setWithdrawMsg({ type: '', text: '' });
+        try {
+            const res = await axios.post(`${API_URL}/referrals/request-withdrawal`, {
+                amount: Number(withdrawForm.amount),
+                bankName: withdrawForm.bankName,
+                accountNumber: withdrawForm.accountNumber,
+                accountName: withdrawForm.accountName
+            }, config);
+            setWithdrawMsg({ type: 'success', text: res.data.message });
+            setWithdrawForm({ amount: '', bankName: '', accountNumber: '', accountName: '' });
+            // Refresh earnings
+            const earningsRes = await axios.get(`${API_URL}/referrals/my-earnings`, config);
+            setReferralEarnings(earningsRes.data);
+            setTimeout(() => { setShowWithdrawModal(false); setWithdrawMsg({ type: '', text: '' }); }, 2500);
+        } catch (err) {
+            setWithdrawMsg({ type: 'error', text: err.response?.data?.message || 'Withdrawal request failed' });
+        } finally {
+            setWithdrawLoading(false);
+        }
+    };
+
     const getCombinedHistory = (device) => {
         if (!device) return [];
         const combined = [
             { id: 'reg', type: 'registration', date: new Date(device.createdAt), title: 'Device Registered', desc: 'Added to TraceIt Registry', icon: 'check', color: 'green' },
             ...(device.history || []).map((h, i) => ({
-                id: `transfer-${i}`,
-                type: 'transfer',
-                date: new Date(h.transferDate),
-                title: 'Ownership Transfer',
-                desc: `From ${h.previousOwner?.firstName || 'Unknown'} to ${h.newOwner?.firstName || 'Unknown'}`,
-                comment: h.comment,
-                icon: 'transfer',
-                color: 'blue'
+                id: `transfer-${i}`, type: 'transfer', date: new Date(h.transferDate),
+                title: 'Ownership Transfer', desc: `From ${h.previousOwner?.firstName || 'Unknown'} to ${h.newOwner?.firstName || 'Unknown'}`,
+                comment: h.comment, icon: 'transfer', color: 'blue'
             })),
             ...(device.reports || []).map((r, i) => ({
-                id: `report-${i}`,
-                type: 'report',
-                date: new Date(r.createdAt),
-                title: 'Device Flagged',
-                desc: `Reported at: ${r.address}`,
-                comment: r.sellerDescription,
-                icon: 'alert',
-                color: 'red'
+                id: `report-${i}`, type: 'report', date: new Date(r.createdAt),
+                title: 'Device Flagged', desc: `Reported at: ${r.address}`,
+                comment: r.sellerDescription, icon: 'alert', color: 'red'
             })),
             ...(device.statusUpdates || []).map((s, i) => ({
-                id: `status-${i}`,
-                type: 'status',
-                date: new Date(s.date),
-                title: `Status Changed to ${s.status}`,
-                desc: `Marked as ${s.status.toUpperCase()}`,
-                comment: s.comment,
-                icon: 'status',
-                color: 'amber'
+                id: `status-${i}`, type: 'status', date: new Date(s.date),
+                title: `Status Changed to ${s.status}`, desc: `Marked as ${s.status.toUpperCase()}`,
+                comment: s.comment, icon: 'status', color: 'amber'
             }))
         ];
         return combined.sort((a, b) => b.date - a.date);
@@ -308,6 +310,97 @@ export default function DashboardPage() {
                 )}
             </div>
 
+            {/* ── REFERRAL EARNINGS BANNER ── */}
+            {referralEarnings && (
+                <div className="bg-gradient-to-br from-primary to-primary-dark text-white rounded-[2.5rem] p-6 md:p-8 shadow-lg shadow-primary/20 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-16 -mt-16" />
+                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-10 -mb-10" />
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2">
+                                <TrendingUp className="w-5 h-5 opacity-80" />
+                                <p className="text-sm font-bold uppercase tracking-widest opacity-80">Referral & Reward Earnings</p>
+                            </div>
+                            <div className="flex items-end gap-6">
+                                <div>
+                                    <p className="text-xs font-bold opacity-60 uppercase tracking-wider mb-1">Available Balance</p>
+                                    <p className="text-4xl font-black">₦{(referralEarnings.availableBalance || 0).toLocaleString()}</p>
+                                </div>
+                                <div className="pb-1 space-y-0.5">
+                                    <p className="text-xs font-semibold opacity-60">Referral Credits: ₦{referralEarnings.referralEarnings}</p>
+                                    <p className="text-xs font-semibold opacity-60">Reward Points: {referralEarnings.rewardPoints} pts (₦{referralEarnings.rewardPointsValue})</p>
+                                    {referralEarnings.pendingEarnings > 0 && (
+                                        <p className="text-xs font-semibold opacity-60">Pending: ₦{referralEarnings.pendingEarnings} (awaiting verifications)</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                                onClick={() => setShowReferralPanel(!showReferralPanel)}
+                                className="bg-white/20 hover:bg-white/30 text-white font-bold px-5 py-3 rounded-2xl transition-all flex items-center gap-2 text-sm"
+                            >
+                                <Users className="w-4 h-4" />
+                                My Referrals ({referralEarnings.totalCreditedReferrals + referralEarnings.totalPendingReferrals})
+                            </button>
+                            <button
+                                onClick={() => setShowWithdrawModal(true)}
+                                className="bg-white text-primary font-bold px-5 py-3 rounded-2xl hover:bg-neutral-50 transition-all flex items-center gap-2 text-sm shadow-lg"
+                            >
+                                <Banknote className="w-4 h-4" />
+                                Withdraw Earnings
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Referral link hint */}
+                    <div className="relative z-10 mt-4 pt-4 border-t border-white/20 flex items-center gap-2">
+                        <p className="text-xs opacity-70">Your referral: Share your registered email with anyone joining TraceIt to earn ₦100 per verified user.</p>
+                    </div>
+                </div>
+            )}
+
+            {/* ── MY REFERRALS PANEL ── */}
+            {showReferralPanel && (
+                <div className="bg-white border border-neutral-200 rounded-[2.5rem] p-6 md:p-8 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-xl font-black text-foreground flex items-center gap-2">
+                            <Users className="w-5 h-5 text-primary" /> Users I Referred
+                        </h3>
+                        <button onClick={() => setShowReferralPanel(false)} className="w-8 h-8 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400 hover:text-foreground transition-all">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                    {myReferrals.length === 0 ? (
+                        <div className="text-center py-10 text-neutral-400">
+                            <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                            <p className="font-bold">No referrals yet</p>
+                            <p className="text-sm mt-1">Share your email with friends to earn ₦100 per verified user.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {myReferrals.map((r) => (
+                                <div key={r._id} className="flex items-center justify-between p-4 bg-neutral-50 rounded-2xl border border-neutral-100 hover:border-primary/20 transition-all">
+                                    <div>
+                                        <p className="font-bold text-foreground">{r.referred?.firstName} {r.referred?.lastName}</p>
+                                        <p className="text-xs text-neutral-500 font-medium">{r.referred?.email}</p>
+                                        <p className="text-xs text-neutral-400 mt-0.5">Joined {new Date(r.createdAt).toLocaleDateString()}</p>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <span className={`text-xs font-black px-3 py-1 rounded-full ${r.status === 'credited' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                            {r.status === 'credited' ? `+₦${r.commissionAmount}` : 'Pending'}
+                                        </span>
+                                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${r.referred?.isApproved ? 'bg-green-50 text-green-600' : 'bg-neutral-100 text-neutral-500'}`}>
+                                            {r.referred?.isApproved ? 'Verified' : 'Unverified'}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Global Search Section */}
             <div className="bg-white border border-neutral-200 p-8 rounded-[3rem] shadow-sm relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
@@ -318,7 +411,7 @@ export default function DashboardPage() {
                     </h3>
                     <form onSubmit={handleSearch} className="flex gap-3">
                         <div className="relative flex-1">
-                            <input 
+                            <input
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -326,7 +419,7 @@ export default function DashboardPage() {
                                 className="w-full px-6 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
                             />
                         </div>
-                        <button 
+                        <button
                             disabled={searchLoading}
                             type="submit"
                             className="bg-primary text-white font-bold px-8 py-4 rounded-2xl hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50"
@@ -354,7 +447,7 @@ export default function DashboardPage() {
                                     {searchResult.status}
                                 </div>
                             </div>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-3">
                                     <div className="flex justify-between text-sm">
@@ -368,12 +461,12 @@ export default function DashboardPage() {
                                         </span>
                                     </div>
                                 </div>
-                                
+
                                 {isRestricted ? (
                                     <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
                                         <ShieldAlert className="w-6 h-6 text-amber-600 mb-2" />
                                         <p className="text-xs font-bold text-amber-800 uppercase tracking-tight mb-2">Verified Members Only</p>
-                                        <button 
+                                        <button
                                             onClick={() => setShowVerifyModal(true)}
                                             className="text-[10px] font-black text-amber-900 bg-amber-200/50 px-3 py-1 rounded-lg hover:bg-amber-200 transition-colors"
                                         >
@@ -395,7 +488,7 @@ export default function DashboardPage() {
                                     </div>
                                 )}
                             </div>
-                            
+
                             {searchResult.status !== 'clean' && !isRestricted && (
                                 <button onClick={() => setShowReportModal(true)} className="mt-6 w-full bg-red-50 text-red-600 border border-red-200 font-bold py-3.5 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
                                     <ShieldAlert className="w-5 h-5" />
@@ -446,7 +539,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                         <h4 className="text-lg font-black text-foreground">Verification in Progress</h4>
-                        <p className="text-neutral-600 font-medium">Your NIN and payment have been received. A super admin is currently reviewing your details. This usually takes less than 24 hours.</p>
+                        <p className="text-neutral-600 font-medium">Your NIN and payment have been received. A field verificator will visit your address and an admin is reviewing your details. This usually takes less than 24 hours.</p>
                     </div>
                 </div>
             )}
@@ -471,7 +564,7 @@ export default function DashboardPage() {
                         <p className="text-3xl font-extrabold text-foreground">{stats.incomingTransfers}</p>
                     </div>
                 </div>
-                
+
                 <button onClick={() => { if (!isRestricted) router.push('/dashboard/history') }} className="bg-white border border-neutral-100 p-6 rounded-[2.5rem] shadow-sm flex items-center gap-5 hover:border-primary/30 transition-all text-left group">
                     <div className="w-14 h-14 bg-purple-50 text-purple-600 flex items-center justify-center rounded-2xl shrink-0 group-hover:bg-primary group-hover:text-white transition-all">
                         <History className="w-7 h-7" />
@@ -506,13 +599,11 @@ export default function DashboardPage() {
                             <p className="text-sm font-medium opacity-90 max-w-lg">{bannerAds[currentAdIdx].description}</p>
                         </div>
                     )}
-                    
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
                         <span className="bg-white text-primary font-black px-8 py-4 rounded-full shadow-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 flex items-center gap-2">
                             {bannerAds[currentAdIdx].actionType === 'whatsapp' ? 'Connect on WhatsApp' : 'Visit Link'} <ChevronRight className="w-5 h-5" />
                         </span>
                     </div>
-
                     {bannerAds.length > 1 && (
                         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
                             {bannerAds.map((_, i) => (
@@ -532,7 +623,7 @@ export default function DashboardPage() {
                         </div>
                         <h2 className="text-4xl font-black text-foreground mb-4">Awaiting Admin Approval</h2>
                         <p className="text-neutral-500 max-w-xl mx-auto font-medium text-lg leading-relaxed mb-6">
-                            Your NIN identity detail and verification payment have been successfully received. You will gain full access to the device registry and transfers as soon as a super admin reviews and approves your account.
+                            Your NIN identity detail and verification payment have been successfully received. A field verificator will visit your home address and a super admin will review your account.
                         </p>
                     </div>
                 ) : (
@@ -545,13 +636,12 @@ export default function DashboardPage() {
                         <p className="text-neutral-500 max-w-xl mx-auto font-medium text-lg leading-relaxed mb-10">
                             To maintain a secure ecosystem, we requires all users to verify their identity with a National Identity Number (NIN) before accessing the device registry and transfer features.
                         </p>
-                        <button 
+                        <button
                             onClick={() => setShowVerifyModal(true)}
                             className="bg-primary text-white font-black px-12 py-5 rounded-2xl hover:bg-primary-dark transition-all shadow-xl shadow-primary/25 text-lg hover:-translate-y-1 active:scale-95"
                         >
                             Start Identity Verification
                         </button>
-                        
                         <div className="mt-12 pt-8 border-t border-neutral-100 grid grid-cols-2 md:grid-cols-4 gap-4 opacity-40">
                             {['Add Devices', 'Track Gadgets', 'Transfer Ownership', 'View History'].map(feat => (
                                 <div key={feat} className="flex items-center justify-center gap-2 text-sm font-bold">
@@ -580,15 +670,14 @@ export default function DashboardPage() {
                             </div>
                         </div>
                     )}
-                    {/* Add more dashboard features here if approved */}
                 </>
             )}
 
-            {/* Verification Modal */}
+            {/* ── VERIFICATION MODAL ── */}
             {showVerifyModal && (
                 <div className="fixed inset-0 z-[100] bg-neutral-900/90 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
                     <div className="bg-white rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-300">
-                        <button 
+                        <button
                             onClick={() => setShowVerifyModal(false)}
                             className="absolute top-6 right-6 w-10 h-10 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400 hover:text-foreground transition-all"
                         >
@@ -621,7 +710,7 @@ export default function DashboardPage() {
                                         <form onSubmit={handleNinSubmit} className="space-y-4">
                                             <div>
                                                 <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Enter NIN Number</label>
-                                                <input 
+                                                <input
                                                     required
                                                     type="text"
                                                     maxLength={11}
@@ -632,7 +721,7 @@ export default function DashboardPage() {
                                                 />
                                             </div>
                                             {error && <p className="text-red-500 text-sm font-bold">{error}</p>}
-                                            <button 
+                                            <button
                                                 disabled={verifyLoading || nin.length < 11}
                                                 type="submit"
                                                 className="w-full bg-primary text-white font-black py-5 rounded-2xl hover:bg-primary-dark transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3 disabled:opacity-50"
@@ -660,9 +749,9 @@ export default function DashboardPage() {
                                         <p className="text-5xl font-black text-foreground">₦500<span className="text-lg text-neutral-400 font-bold">.00</span></p>
                                     </div>
 
-                                     {error && <p className="text-red-500 text-sm font-bold text-center">{error}</p>}
+                                    {error && <p className="text-red-500 text-sm font-bold text-center">{error}</p>}
 
-                                    <button 
+                                    <button
                                         disabled={verifyLoading}
                                         onClick={handlePayment}
                                         className="w-full bg-neutral-900 text-white font-black py-5 rounded-2xl hover:bg-black transition-all shadow-xl shadow-black/20 flex items-center justify-center gap-3 disabled:opacity-50"
@@ -670,7 +759,7 @@ export default function DashboardPage() {
                                         {verifyLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Pay via Secure Gateway'}
                                         <ShieldAlert className="w-5 h-5" />
                                     </button>
-                                    
+
                                     <p className="text-center text-[10px] text-neutral-400 font-bold uppercase tracking-widest">Powered by Traceit Global Registry</p>
                                 </div>
                             )}
@@ -685,11 +774,11 @@ export default function DashboardPage() {
                                             <CheckCircle className="w-4 h-4" />
                                         </div>
                                     </div>
-                                    
+
                                     <div>
                                         <h3 className="text-3xl font-black text-foreground mb-4">Submission Received</h3>
                                         <p className="text-neutral-500 font-medium leading-relaxed">
-                                            We've received your NIN and payment information. A super admin is reviewing your details to ensure they match our security standards.
+                                            We've received your NIN and payment information. A field verificator will visit your home address, and a super admin is reviewing your details.
                                         </p>
                                     </div>
 
@@ -697,7 +786,7 @@ export default function DashboardPage() {
                                         <p className="text-sm font-bold text-primary italic">"Safety first, for everyone in the registry."</p>
                                     </div>
 
-                                    <button 
+                                    <button
                                         onClick={() => setShowVerifyModal(false)}
                                         className="w-full bg-neutral-100 text-neutral-900 font-black py-5 rounded-2xl hover:bg-neutral-200 transition-all"
                                     >
@@ -710,11 +799,11 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            {/* Report Modal */}
+            {/* ── REPORT MODAL ── */}
             {showReportModal && (
                 <div className="fixed inset-0 z-[100] bg-neutral-900/90 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
                     <div className="bg-white rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-300">
-                        <button 
+                        <button
                             onClick={() => setShowReportModal(false)}
                             className="absolute top-6 right-6 w-10 h-10 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400 hover:text-foreground transition-all"
                         >
@@ -728,7 +817,7 @@ export default function DashboardPage() {
                                 <h3 className="text-3xl font-black text-foreground mb-2">Report Device</h3>
                                 <p className="text-neutral-500 font-medium leading-relaxed">Please provide the location and description of the person in possession of this stolen/lost device. You earn reward points for accurate reports!</p>
                             </div>
-                            
+
                             {reportMsg.text && (
                                 <div className={`p-4 rounded-xl font-bold mb-6 text-center ${reportMsg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                                     {reportMsg.text}
@@ -738,7 +827,7 @@ export default function DashboardPage() {
                             <form onSubmit={handleReportSubmit} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Device Location / Address</label>
-                                    <input 
+                                    <input
                                         required
                                         type="text"
                                         value={reportForm.address}
@@ -749,7 +838,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Seller / Possessor Description</label>
-                                    <textarea 
+                                    <textarea
                                         required
                                         value={reportForm.sellerDescription}
                                         onChange={(e) => setReportForm({ ...reportForm, sellerDescription: e.target.value })}
@@ -757,12 +846,105 @@ export default function DashboardPage() {
                                         className="w-full px-6 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium h-28 focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
                                     />
                                 </div>
-                                <button 
+                                <button
                                     disabled={reportLoading}
                                     type="submit"
                                     className="w-full bg-red-600 text-white font-black py-5 rounded-2xl hover:bg-red-700 transition-all shadow-xl shadow-red-600/20 flex items-center justify-center gap-3 disabled:opacity-50 mt-4"
                                 >
                                     {reportLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Submit Report'}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── WITHDRAWAL MODAL ── */}
+            {showWithdrawModal && (
+                <div className="fixed inset-0 z-[100] bg-neutral-900/90 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-300">
+                        <button
+                            onClick={() => setShowWithdrawModal(false)}
+                            className="absolute top-6 right-6 w-10 h-10 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400 hover:text-foreground transition-all"
+                        >
+                            ✕
+                        </button>
+                        <div className="p-10 md:p-12">
+                            <div className="text-center mb-8">
+                                <div className="w-20 h-20 bg-primary/10 text-primary flex items-center justify-center rounded-3xl mx-auto mb-6">
+                                    <Wallet className="w-10 h-10" />
+                                </div>
+                                <h3 className="text-3xl font-black text-foreground mb-2">Withdraw Earnings</h3>
+                                <p className="text-neutral-500 font-medium leading-relaxed">
+                                    Available balance: <span className="font-black text-foreground">₦{(referralEarnings?.availableBalance || 0).toLocaleString()}</span>
+                                </p>
+                            </div>
+
+                            {withdrawMsg.text && (
+                                <div className={`p-4 rounded-xl font-bold mb-6 text-center ${withdrawMsg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                                    {withdrawMsg.text}
+                                </div>
+                            )}
+
+                            <div className="bg-amber-50 border border-amber-100 text-amber-800 text-xs font-bold p-3 rounded-xl mb-5">
+                                ⚠️ Account name must exactly match your profile name: <span className="font-black">{user?.firstName} {user?.lastName}</span>
+                            </div>
+
+                            <form onSubmit={handleWithdrawSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Amount (₦)</label>
+                                    <input
+                                        required
+                                        type="number"
+                                        min="100"
+                                        max={referralEarnings?.availableBalance || 0}
+                                        value={withdrawForm.amount}
+                                        onChange={(e) => setWithdrawForm({ ...withdrawForm, amount: e.target.value })}
+                                        placeholder="e.g. 500"
+                                        className="w-full px-6 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Bank Name</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        value={withdrawForm.bankName}
+                                        onChange={(e) => setWithdrawForm({ ...withdrawForm, bankName: e.target.value })}
+                                        placeholder="e.g. Access Bank"
+                                        className="w-full px-6 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Account Number</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        maxLength={10}
+                                        value={withdrawForm.accountNumber}
+                                        onChange={(e) => setWithdrawForm({ ...withdrawForm, accountNumber: e.target.value.replace(/\D/g, '') })}
+                                        placeholder="10-digit account number"
+                                        className="w-full px-6 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-mono font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Account Name</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        value={withdrawForm.accountName}
+                                        onChange={(e) => setWithdrawForm({ ...withdrawForm, accountName: e.target.value })}
+                                        placeholder={`${user?.firstName} ${user?.lastName}`}
+                                        className="w-full px-6 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+                                    />
+                                    <p className="text-xs text-neutral-400 mt-1 font-medium">Must match your name: {user?.firstName} {user?.lastName}</p>
+                                </div>
+                                <button
+                                    disabled={withdrawLoading}
+                                    type="submit"
+                                    className="w-full bg-primary text-white font-black py-5 rounded-2xl hover:bg-primary-dark transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3 disabled:opacity-50 mt-4"
+                                >
+                                    {withdrawLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Submit Withdrawal Request'}
                                 </button>
                             </form>
                         </div>

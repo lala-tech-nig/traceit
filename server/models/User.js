@@ -7,16 +7,28 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     phoneNumber: { type: String, default: '' },
-    role: { type: String, enum: ['basic', 'technician', 'vendor', 'substore', 'admin'], default: 'basic' },
+    homeAddress: { type: String, default: '' },
+    role: { type: String, enum: ['basic', 'technician', 'vendor', 'substore', 'admin', 'verificator'], default: 'basic' },
     isApproved: { type: Boolean, default: false },
     ninVerified: { type: Boolean, default: false },
     hasPaid: { type: Boolean, default: false },
     image: { type: String, default: null },
     parentVendor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     transferCount: { type: Number, default: 0 },
     rewardPoints: { type: Number, default: 0 },
     subscriptionStart: { type: Date },
-    subscriptionEnd: { type: Date }
+    subscriptionEnd: { type: Date },
+    // Verificator fields
+    verificatorAreaOfFocus: { type: String, default: '' },
+    verificatorTarget: {
+        daily: { type: Number, default: 0 },
+        weekly: { type: Number, default: 0 },
+        monthly: { type: Number, default: 0 },
+        dailyPay: { type: Number, default: 0 },
+        weeklyPay: { type: Number, default: 0 },
+        monthlyPay: { type: Number, default: 0 }
+    }
 }, {
     timestamps: true
 });

@@ -3,6 +3,8 @@ import Payment from '../models/Payment.js';
 import SearchLog from '../models/SearchLog.js';
 import Transfer from '../models/Transfer.js';
 import Device from '../models/Device.js';
+import Referral from '../models/Referral.js';
+import WithdrawalRequest from '../models/WithdrawalRequest.js';
 import AdmZip from 'adm-zip';
 import path from 'path';
 import fs from 'fs';
@@ -157,12 +159,84 @@ export const approveUser = async (req, res) => {
 
         if (user) {
             user.isApproved = true;
-            user.ninVerified = true; // Since NIN was verified manually by admin
+            user.ninVerified = true;
             await user.save();
+
+            // Credit referral commission to whoever referred this user
+            if (user.referredBy) {
+                const referral = await Referral.findOne({
+                    referrer: user.referredBy,
+                    referred: user._id,
+                    status: 'pending'
+                });
+                if (referral) {
+                    referral.status = 'credited';
+                    referral.creditedAt = new Date();
+                    await referral.save();
+                }
+            }
+
             res.json({ message: 'User approved successfully' });
         } else {
             res.status(404).json({ message: 'User not found' });
         }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get all withdrawal requests
+// @route   GET /api/admin/withdrawals
+// @access  Private/Admin
+export const getWithdrawalRequests = async (req, res) => {
+    try {
+        const { status } = req.query;
+        const filter = status ? { status } : {};
+        const withdrawals = await WithdrawalRequest.find(filter)
+            .populate('user', 'firstName lastName email phoneNumber')
+            .sort({ createdAt: -1 });
+        res.json(withdrawals);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Process a withdrawal request (approve/reject)
+// @route   PUT /api/admin/withdrawals/:id
+// @access  Private/Admin
+export const processWithdrawalRequest = async (req, res) => {
+    try {
+        const { status, adminNote } = req.body;
+        if (!['approved', 'rejected'].includes(status)) {
+            return res.status(400).json({ message: 'Status must be approved or rejected' });
+        }
+        const withdrawal = await WithdrawalRequest.findById(req.params.id);
+        if (!withdrawal) return res.status(404).json({ message: 'Withdrawal request not found' });
+
+        withdrawal.status = status;
+        withdrawal.adminNote = adminNote || '';
+        withdrawal.processedAt = new Date();
+        await withdrawal.save();
+
+        res.json({ message: `Withdrawal ${status}`, withdrawal });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Set verificator targets
+// @route   PUT /api/admin/verificator-targets/:id
+// @access  Private/Admin
+export const setVerificatorTargets = async (req, res) => {
+    try {
+        const { daily, weekly, monthly, dailyPay, weeklyPay, monthlyPay } = req.body;
+        const user = await User.findById(req.params.id);
+        if (!user || user.role !== 'verificator') {
+            return res.status(404).json({ message: 'Verificator not found' });
+        }
+        user.verificatorTarget = { daily, weekly, monthly, dailyPay, weeklyPay, monthlyPay };
+        await user.save();
+        res.json({ message: 'Targets updated', target: user.verificatorTarget });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
