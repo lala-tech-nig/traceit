@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
-import { UploadCloud, Users } from 'lucide-react';
+import { UploadCloud, Users, Eye, EyeOff } from 'lucide-react';
 
 export default function RegisterPage() {
     const [formData, setFormData] = useState({
@@ -18,6 +18,7 @@ export default function RegisterPage() {
     });
     const [image, setImage] = useState(null);
     const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const { register } = useAuth();
 
@@ -135,8 +136,22 @@ export default function RegisterPage() {
                         {/* Password */}
                         <div>
                             <label className="block text-sm font-semibold text-neutral-700">Password</label>
-                            <div className="mt-1">
-                                <input name="password" type="password" required onChange={handleChange} className="appearance-none block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all sm:text-sm font-medium" placeholder="••••••••" />
+                            <div className="mt-1 relative">
+                                <input
+                                    name="password"
+                                    type={showPassword ? "text" : "password"}
+                                    required
+                                    onChange={handleChange}
+                                    className="appearance-none block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all sm:text-sm font-medium"
+                                    placeholder="••••••••"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                                >
+                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
                             </div>
                         </div>
 
