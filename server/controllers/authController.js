@@ -129,6 +129,14 @@ export const loginUser = async (req, res) => {
         const user = await User.findOne({ email: lowerEmail });
 
         if (user && (await user.matchPassword(password))) {
+            if (user.isSuspended) {
+                return res.status(403).json({
+                    message: 'Your account has been restricted, reach out to the support whatsapp line.',
+                    isSuspended: true,
+                    email: user.email
+                });
+            }
+
             res.json({
                 _id: user._id,
                 firstName: user.firstName,

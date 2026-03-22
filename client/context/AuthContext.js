@@ -66,9 +66,12 @@ export const AuthProvider = ({ children }) => {
                 success: false,
                 message: error.response && error.response.data.message
                     ? error.response.data.message
-                    : error.message
+                    : error.message,
+                isSuspended: error.response?.data?.isSuspended,
+                email: error.response?.data?.email
             };
         }
+
     };
 
     const register = async (formData) => {

@@ -11,7 +11,9 @@ import {
     getUserAdminDetails,
     getWithdrawalRequests,
     processWithdrawalRequest,
-    setVerificatorTargets
+    setVerificatorTargets,
+    toggleUserSuspension,
+    searchUsers
 } from '../controllers/adminController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
@@ -33,6 +35,9 @@ router.put('/withdrawals/:id', protect, admin, processWithdrawalRequest);
 
 // Verificator targets
 router.put('/verificator-targets/:id', protect, admin, setVerificatorTargets);
+router.post('/users/:id/suspend', protect, admin, toggleUserSuspension);
+router.get('/users/search', protect, admin, searchUsers);
+
 
 export default router;
 

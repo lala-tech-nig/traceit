@@ -10,6 +10,8 @@ const userSchema = new mongoose.Schema({
     homeAddress: { type: String, default: '' },
     role: { type: String, enum: ['basic', 'technician', 'vendor', 'substore', 'admin', 'verificator'], default: 'basic' },
     isApproved: { type: Boolean, default: false },
+    isSuspended: { type: Boolean, default: false },
+    suspensionReason: { type: String, default: '' },
     ninVerified: { type: Boolean, default: false },
     hasPaid: { type: Boolean, default: false },
     image: { type: String, default: null },

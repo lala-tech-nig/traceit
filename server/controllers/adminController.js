@@ -350,3 +350,57 @@ export const getUserAdminDetails = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// @desc    Suspend or unsuspend a user
+// @route   POST /api/admin/users/:id/suspend
+// @access  Private/Admin
+export const toggleUserSuspension = async (req, res) => {
+    try {
+        const { isSuspended, suspensionReason } = req.body;
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (user.role === 'admin') {
+            return res.status(400).json({ message: 'Admin accounts cannot be suspended via this interface' });
+        }
+
+        user.isSuspended = isSuspended;
+        user.suspensionReason = suspensionReason || '';
+        await user.save();
+
+        res.json({ message: `User account ${isSuspended ? 'restricted' : 'restored'} successfully`, user });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Search users by email, name, or phone
+// @route   GET /api/admin/users/search
+// @access  Private/Admin
+export const searchUsers = async (req, res) => {
+    try {
+        const { query } = req.query;
+        if (!query) {
+            return res.status(400).json({ message: 'Search query is required' });
+        }
+
+        const searchRegex = new RegExp(query, 'i');
+
+        const users = await User.find({
+            $or: [
+                { email: searchRegex },
+                { firstName: searchRegex },
+                { lastName: searchRegex },
+                { phoneNumber: searchRegex }
+            ]
+        }).select('-password').sort({ createdAt: -1 }).limit(20);
+
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+

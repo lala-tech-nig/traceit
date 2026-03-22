@@ -50,6 +50,8 @@ export default function AdminDashboard() {
     const [recentTransfers, setRecentTransfers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [usersLoading, setUsersLoading] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
     const [processLoading, setProcessLoading] = useState(null);
     const [message, setMessage] = useState({ type: '', text: '' });
     const [activeTab, setActiveTab] = useState('overview'); // overview, approvals, accounts, logs, reports, ads
@@ -124,6 +126,7 @@ export default function AdminDashboard() {
 
     const fetchAllUsers = async () => {
         setUsersLoading(true);
+        setIsSearching(false);
         try {
             const config = { 
                 headers: { Authorization: `Bearer ${user.token}` },
@@ -135,10 +138,68 @@ export default function AdminDashboard() {
             };
             const res = await axios.get(`${API_URL}/admin/users`, config);
             setAllUsers(res.data);
+            setSearchQuery('');
         } catch (error) {
             console.error("Failed to fetch all users", error);
         } finally {
             setUsersLoading(false);
+        }
+    };
+
+    const handleSearchUsers = async (e) => {
+        if (e) e.preventDefault();
+        if (!searchQuery.trim()) {
+            fetchAllUsers();
+            return;
+        }
+        setUsersLoading(true);
+        setIsSearching(true);
+        try {
+            const config = { 
+                headers: { Authorization: `Bearer ${user.token}` },
+                params: { query: searchQuery }
+            };
+            const res = await axios.get(`${API_URL}/admin/users/search`, config);
+            setAllUsers(res.data);
+        } catch (error) {
+            console.error("Search failed", error);
+            setMessage({ type: 'error', text: 'Search failed.' });
+        } finally {
+            setUsersLoading(false);
+        }
+    };
+
+    const handleToggleSuspension = async (userId, isCurrentlySuspended) => {
+        const action = isCurrentlySuspended ? 'restore' : 'restrict';
+        const reason = !isCurrentlySuspended ? window.prompt("Enter reason for restriction (optional):", "Policy violation") : "";
+        
+        if (!isCurrentlySuspended && reason === null) return; // Cancelled
+
+        setProcessLoading(userId);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.post(`${API_URL}/admin/users/${userId}/suspend`, {
+                isSuspended: !isCurrentlySuspended,
+                suspensionReason: reason
+            }, config);
+            
+            setMessage({ type: 'success', text: `User account ${action}ed successfully!` });
+            
+            // Refresh current view
+            if (isSearching) {
+                handleSearchUsers();
+            } else {
+                fetchAllUsers();
+            }
+            
+            // Update selected user if modal is open
+            if (selectedUser && selectedUser.user?._id === userId) {
+                handleViewUserDetails(userId);
+            }
+        } catch (error) {
+            setMessage({ type: 'error', text: error.response?.data?.message || `Failed to ${action} user` });
+        } finally {
+            setProcessLoading(null);
         }
     };
 
@@ -526,7 +587,26 @@ export default function AdminDashboard() {
                                 <h3 className="text-xl font-black text-foreground">All Registered Accounts</h3>
                                 <p className="text-sm font-medium text-neutral-500 mt-1">Monitor and manage all user accounts on the platform.</p>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-col md:flex-row items-center gap-3">
+                                <form onSubmit={handleSearchUsers} className="relative w-full md:w-64">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Search email, name..." 
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full pl-9 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-bold outline-none focus:border-primary transition-all shadow-sm"
+                                    />
+                                    {isSearching && (
+                                        <button 
+                                            type="button"
+                                            onClick={fetchAllUsers}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-neutral-400 hover:text-red-500 transition-colors"
+                                        >
+                                            <XCircle className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
+                                </form>
                                 <div className="relative">
                                     <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                                     <select 
@@ -629,7 +709,10 @@ export default function AdminDashboard() {
                                                         )}
                                                         {u.ninVerified && (
                                                             <span className="flex items-center gap-1 text-primary text-[10px] font-bold uppercase"><Fingerprint className="w-3 h-3" /> Verified</span>
-                                                        )}
+                                                       )}
+                                                       {u.isSuspended && (
+                                                            <span className="flex items-center gap-1 text-red-600 text-[10px] font-black uppercase"><ShieldAlert className="w-3 h-3" /> Restricted</span>
+                                                       )}
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-5 text-right">
@@ -1355,6 +1438,40 @@ export default function AdminDashboard() {
                                                     {selectedUser.user?.ninVerified ? <CheckCircle className="w-6 h-6 text-green-500"/> : <XCircle className="w-6 h-6 text-red-500"/>}
                                                 </div>
                                             </div>
+                                        </div>
+
+                                        {/* Suspension Control Section */}
+                                        <div className={`p-6 rounded-[1.5rem] border ${selectedUser.user?.isSuspended ? 'bg-red-50 border-red-100' : 'bg-white border-neutral-200'} shadow-sm flex items-center justify-between`}>
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${selectedUser.user?.isSuspended ? 'bg-red-500 text-white' : 'bg-neutral-100 text-neutral-400'}`}>
+                                                    <ShieldAlert className="w-6 h-6" />
+                                                </div>
+                                                <div>
+                                                    <h4 className={`font-black ${selectedUser.user?.isSuspended ? 'text-red-700' : 'text-foreground'}`}>
+                                                        {selectedUser.user?.isSuspended ? 'Account Restricted' : 'Account Active'}
+                                                    </h4>
+                                                    <p className="text-xs font-medium text-neutral-500">
+                                                        {selectedUser.user?.isSuspended 
+                                                            ? `Reason: ${selectedUser.user?.suspensionReason || 'No reason provided'}` 
+                                                            : 'Standard user access is currently active for this account.'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button 
+                                                disabled={processLoading === selectedUser.user?._id || selectedUser.user?.role === 'admin'}
+                                                onClick={() => handleToggleSuspension(selectedUser.user?._id, selectedUser.user?.isSuspended)}
+                                                className={`px-6 py-2.5 rounded-xl font-bold transition-all shadow-md disabled:opacity-50 ${
+                                                    selectedUser.user?.isSuspended 
+                                                        ? 'bg-green-600 text-white hover:bg-green-700 shadow-green-600/20' 
+                                                        : 'bg-red-600 text-white hover:bg-red-700 shadow-red-600/20'
+                                                }`}
+                                            >
+                                                {processLoading === selectedUser.user?._id ? (
+                                                    <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                                                ) : (
+                                                    selectedUser.user?.isSuspended ? 'Restore Access' : 'Restrict Access'
+                                                )}
+                                            </button>
                                         </div>
 
                                         {/* Recent Payments Table */}
