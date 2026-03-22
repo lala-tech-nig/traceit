@@ -3,9 +3,10 @@
 import { useAuth } from '@/context/AuthContext';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Smartphone, ArrowLeftRight, Activity, ShieldAlert, CreditCard, Fingerprint, ChevronRight, CheckCircle, Loader2, Search, History, Users, Wallet, Banknote, TrendingUp, X } from 'lucide-react';
+import { Smartphone, ArrowLeftRight, Activity, ShieldAlert, CreditCard, Fingerprint, ChevronRight, CheckCircle, Loader2, Search, History, Users, Wallet, Banknote, TrendingUp, X, Info } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { payWithPaystack } from '@/lib/paystack';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function DashboardPage() {
     const { user, API_URL, login } = useAuth();
@@ -37,6 +38,7 @@ export default function DashboardPage() {
     const [withdrawForm, setWithdrawForm] = useState({ amount: '', bankName: '', accountNumber: '', accountName: '' });
     const [withdrawLoading, setWithdrawLoading] = useState(false);
     const [withdrawMsg, setWithdrawMsg] = useState({ type: '', text: '' });
+    const [withdrawStep, setWithdrawStep] = useState(1);
 
     const isRestricted = !user?.isApproved;
 
@@ -373,7 +375,7 @@ export default function DashboardPage() {
                                 My Referrals ({referralEarnings.totalCreditedReferrals + referralEarnings.totalPendingReferrals})
                             </button>
                             <button
-                                onClick={() => setShowWithdrawModal(true)}
+                                onClick={() => { setShowWithdrawModal(true); setWithdrawStep(1); }}
                                 className="bg-white text-primary font-bold px-5 py-3 rounded-2xl hover:bg-neutral-50 transition-all flex items-center gap-2 text-sm shadow-lg"
                             >
                                 <Banknote className="w-4 h-4" />
@@ -915,98 +917,228 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            {/* ── WITHDRAWAL MODAL ── */}
-            {showWithdrawModal && (
-                <div className="fixed inset-0 z-[100] bg-neutral-900/90 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-300">
-                        <button
+            <AnimatePresence>
+                {showWithdrawModal && (
+                    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+                        {/* Backdrop */}
+                        <div 
+                            className="absolute inset-0 bg-neutral-900/60 backdrop-blur-md"
                             onClick={() => setShowWithdrawModal(false)}
-                            className="absolute top-6 right-6 w-10 h-10 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400 hover:text-foreground transition-all"
+                        />
+                        
+                        {/* Modal Card */}
+                        <motion.div 
+                            initial={{ y: "100%" }}
+                            animate={{ y: 0 }}
+                            exit={{ y: "100%" }}
+                            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                            className="bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl relative z-10 sm:mb-0 mb-20"
                         >
-                            ✕
-                        </button>
-                        <div className="p-10 md:p-12">
-                            <div className="text-center mb-8">
-                                <div className="w-20 h-20 bg-primary/10 text-primary flex items-center justify-center rounded-3xl mx-auto mb-6">
-                                    <Wallet className="w-10 h-10" />
-                                </div>
-                                <h3 className="text-3xl font-black text-foreground mb-2">Withdraw Earnings</h3>
-                                <p className="text-neutral-500 font-medium leading-relaxed">
-                                    Available balance: <span className="font-black text-foreground">₦{(referralEarnings?.availableBalance || 0).toLocaleString()}</span>
-                                </p>
-                            </div>
-
-                            {withdrawMsg.text && (
-                                <div className={`p-4 rounded-xl font-bold mb-6 text-center ${withdrawMsg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                                    {withdrawMsg.text}
-                                </div>
-                            )}
-
-                            <div className="bg-amber-50 border border-amber-100 text-amber-800 text-xs font-bold p-3 rounded-xl mb-5">
-                                ⚠️ Account name must exactly match your profile name: <span className="font-black">{user?.firstName} {user?.lastName}</span>
-                            </div>
-
-                            <form onSubmit={handleWithdrawSubmit} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Amount (₦)</label>
-                                    <input
-                                        required
-                                        type="number"
-                                        min="100"
-                                        max={referralEarnings?.availableBalance || 0}
-                                        value={withdrawForm.amount}
-                                        onChange={(e) => setWithdrawForm({ ...withdrawForm, amount: e.target.value })}
-                                        placeholder="e.g. 500"
-                                        className="w-full px-6 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Bank Name</label>
-                                    <input
-                                        required
-                                        type="text"
-                                        value={withdrawForm.bankName}
-                                        onChange={(e) => setWithdrawForm({ ...withdrawForm, bankName: e.target.value })}
-                                        placeholder="e.g. Access Bank"
-                                        className="w-full px-6 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Account Number</label>
-                                    <input
-                                        required
-                                        type="text"
-                                        maxLength={10}
-                                        value={withdrawForm.accountNumber}
-                                        onChange={(e) => setWithdrawForm({ ...withdrawForm, accountNumber: e.target.value.replace(/\D/g, '') })}
-                                        placeholder="10-digit account number"
-                                        className="w-full px-6 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-mono font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Account Name</label>
-                                    <input
-                                        required
-                                        type="text"
-                                        value={withdrawForm.accountName}
-                                        onChange={(e) => setWithdrawForm({ ...withdrawForm, accountName: e.target.value })}
-                                        placeholder={`${user?.firstName} ${user?.lastName}`}
-                                        className="w-full px-6 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
-                                    />
-                                    <p className="text-xs text-neutral-400 mt-1 font-medium">Must match your name: {user?.firstName} {user?.lastName}</p>
-                                </div>
+                            <div className="p-8 sm:p-10">
                                 <button
-                                    disabled={withdrawLoading}
-                                    type="submit"
-                                    className="w-full bg-primary text-white font-black py-5 rounded-2xl hover:bg-primary-dark transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3 disabled:opacity-50 mt-4"
+                                    onClick={() => setShowWithdrawModal(false)}
+                                    className="absolute top-6 right-6 w-8 h-8 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400 hover:text-foreground transition-all"
                                 >
-                                    {withdrawLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Submit Withdrawal Request'}
+                                    <X className="w-4 h-4" />
                                 </button>
-                            </form>
-                        </div>
+
+                                {/* Progress Indicator */}
+                                <div className="flex gap-2 mb-8 mt-2">
+                                    {[1, 2, 3].map((s) => (
+                                        <div key={s} className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${withdrawStep >= s ? 'bg-primary' : 'bg-neutral-100'}`} />
+                                    ))}
+                                </div>
+
+                                <AnimatePresence mode="wait">
+                                    {withdrawStep === 1 && (
+                                        <motion.div
+                                            key="step1"
+                                            initial={{ opacity: 0, x: 20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -20 }}
+                                            className="space-y-6"
+                                        >
+                                            <div className="text-center mb-6">
+                                                <div className="w-16 h-16 bg-primary/10 text-primary flex items-center justify-center rounded-2xl mx-auto mb-4">
+                                                    <Wallet className="w-8 h-8" />
+                                                </div>
+                                                <h3 className="text-2xl font-black text-foreground">Withdraw Amount</h3>
+                                                <p className="text-sm text-neutral-500 mt-1">Select how much you'd like to withdraw.</p>
+                                            </div>
+
+                                            <div className="bg-neutral-50 p-6 rounded-2xl border border-neutral-100 text-center">
+                                                <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1">Available Balance</p>
+                                                <p className="text-3xl font-black text-foreground">₦{(referralEarnings?.availableBalance || 0).toLocaleString()}</p>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between items-center ml-1">
+                                                    <label className="block text-[11px] font-black text-neutral-400 uppercase tracking-widest">Amount to Withdraw (₦)</label>
+                                                    {withdrawForm.amount && Number(withdrawForm.amount) > (referralEarnings?.availableBalance || 0) && (
+                                                        <span className="text-[10px] font-bold text-red-500 animate-in fade-in slide-in-from-right-2">Insufficient Balance</span>
+                                                    )}
+                                                </div>
+                                                <input
+                                                    required
+                                                    type="number"
+                                                    min="100"
+                                                    max={referralEarnings?.availableBalance || 0}
+                                                    value={withdrawForm.amount}
+                                                    onChange={(e) => setWithdrawForm({ ...withdrawForm, amount: e.target.value })}
+                                                    placeholder="e.g. 500"
+                                                    className={`w-full px-5 py-4 bg-neutral-50 border rounded-2xl font-bold text-foreground outline-none transition-all ${
+                                                        withdrawForm.amount && (Number(withdrawForm.amount) < 100 || Number(withdrawForm.amount) > (referralEarnings?.availableBalance || 0))
+                                                        ? 'border-red-200 focus:border-red-400'
+                                                        : 'border-neutral-200 focus:border-primary focus:bg-white'
+                                                    }`}
+                                                />
+                                                {withdrawForm.amount && Number(withdrawForm.amount) < 100 && (
+                                                    <p className="text-[10px] text-neutral-400 font-bold ml-1">Minimum withdrawal is ₦100</p>
+                                                )}
+                                            </div>
+
+                                            <button
+                                                disabled={!referralEarnings || !withdrawForm.amount || Number(withdrawForm.amount) < 100 || Number(withdrawForm.amount) > referralEarnings?.availableBalance}
+                                                onClick={() => setWithdrawStep(2)}
+                                                className="w-full bg-primary text-white font-black py-4 rounded-xl hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {referralEarnings ? 'Next Step' : <Loader2 className="w-4 h-4 animate-spin" />}
+                                                {referralEarnings && <ChevronRight className="w-4 h-4" />}
+                                            </button>
+                                        </motion.div>
+                                    )}
+
+                                    {withdrawStep === 2 && (
+                                        <motion.div
+                                            key="step2"
+                                            initial={{ opacity: 0, x: 20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -20 }}
+                                            className="space-y-5"
+                                        >
+                                            <div className="text-center mb-6">
+                                                <h3 className="text-2xl font-black text-foreground">Bank Details</h3>
+                                                <p className="text-sm text-neutral-500 mt-1">Where should we send your money?</p>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <div className="space-y-1.5">
+                                                    <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Bank Name</label>
+                                                    <input
+                                                        required
+                                                        type="text"
+                                                        value={withdrawForm.bankName}
+                                                        onChange={(e) => setWithdrawForm({ ...withdrawForm, bankName: e.target.value })}
+                                                        placeholder="e.g. Access Bank"
+                                                        className="w-full px-5 py-3.5 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-foreground focus:bg-white focus:border-primary outline-none transition-all text-sm"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Account Number</label>
+                                                    <input
+                                                        required
+                                                        type="text"
+                                                        maxLength={10}
+                                                        value={withdrawForm.accountNumber}
+                                                        onChange={(e) => setWithdrawForm({ ...withdrawForm, accountNumber: e.target.value.replace(/\D/g, '') })}
+                                                        placeholder="10-digit account number"
+                                                        className="w-full px-5 py-3.5 bg-neutral-50 border border-neutral-200 rounded-xl font-mono font-bold text-base text-foreground focus:bg-white focus:border-primary outline-none transition-all text-sm"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Account Name</label>
+                                                    <input
+                                                        required
+                                                        type="text"
+                                                        value={withdrawForm.accountName}
+                                                        onChange={(e) => setWithdrawForm({ ...withdrawForm, accountName: e.target.value })}
+                                                        placeholder={`${user?.firstName} ${user?.lastName}`}
+                                                        className="w-full px-5 py-3.5 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-foreground focus:bg-white focus:border-primary outline-none transition-all text-sm"
+                                                    />
+                                                    <p className="text-[10px] text-amber-600 font-bold ml-1">Must match profile: {user?.firstName} {user?.lastName}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-3 pt-2">
+                                                <button
+                                                    onClick={() => setWithdrawStep(1)}
+                                                    className="flex-1 bg-neutral-100 text-neutral-500 font-bold py-4 rounded-xl hover:bg-neutral-200 transition-all"
+                                                >
+                                                    Back
+                                                </button>
+                                                <button
+                                                    disabled={!withdrawForm.bankName || withdrawForm.accountNumber.length < 10 || !withdrawForm.accountName}
+                                                    onClick={() => setWithdrawStep(3)}
+                                                    className="flex-[2] bg-primary text-white font-black py-4 rounded-xl hover:bg-primary-dark transition-all shadow-lg shadow-primary/20"
+                                                >
+                                                    Review Request
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    )}
+
+                                    {withdrawStep === 3 && (
+                                        <motion.div
+                                            key="step3"
+                                            initial={{ opacity: 0, x: 20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -20 }}
+                                            className="space-y-6"
+                                        >
+                                            <div className="text-center mb-6">
+                                                <h3 className="text-2xl font-black text-foreground">Review & Confirm</h3>
+                                                <p className="text-sm text-neutral-500 mt-1">Please confirm the details are correct.</p>
+                                            </div>
+
+                                            <div className="bg-neutral-50 p-6 rounded-2xl border border-neutral-100 space-y-4">
+                                                <div className="flex justify-between items-center border-b border-neutral-200 pb-3">
+                                                    <span className="text-xs font-bold text-neutral-400 uppercase">Amount</span>
+                                                    <span className="font-black text-foreground">₦{Number(withdrawForm.amount).toLocaleString()}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center border-b border-neutral-200 pb-3">
+                                                    <span className="text-xs font-bold text-neutral-400 uppercase">Bank</span>
+                                                    <span className="font-bold text-foreground">{withdrawForm.bankName}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-xs font-bold text-neutral-400 uppercase">Account</span>
+                                                    <div className="text-right">
+                                                        <p className="font-bold text-foreground leading-none">{withdrawForm.accountNumber}</p>
+                                                        <p className="text-[10px] font-medium text-neutral-500 mt-1">{withdrawForm.accountName}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {withdrawMsg.text && (
+                                                <div className={`p-4 rounded-xl font-bold text-center text-sm ${withdrawMsg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                                                    {withdrawMsg.text}
+                                                </div>
+                                            )}
+
+                                            <div className="flex gap-3">
+                                                <button
+                                                    disabled={withdrawLoading}
+                                                    onClick={() => setWithdrawStep(2)}
+                                                    className="flex-1 bg-neutral-100 text-neutral-500 font-bold py-4 rounded-xl hover:bg-neutral-200 transition-all disabled:opacity-50"
+                                                >
+                                                    Back
+                                                </button>
+                                                <button
+                                                    disabled={withdrawLoading}
+                                                    onClick={handleWithdrawSubmit}
+                                                    className="flex-[2] bg-primary text-white font-black py-4 rounded-xl hover:bg-primary-dark transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2"
+                                                >
+                                                    {withdrawLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
+                                                    {withdrawLoading ? 'Confirming...' : 'Confirm & Withdraw'}
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        </motion.div>
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
         </div>
     );
 }
