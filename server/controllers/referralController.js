@@ -1,6 +1,8 @@
 import Referral from '../models/Referral.js';
 import WithdrawalRequest from '../models/WithdrawalRequest.js';
 import User from '../models/User.js';
+import ReferralSpend from '../models/ReferralSpend.js';
+import Payment from '../models/Payment.js';
 
 // @desc    Get my referrals (users I referred)
 // @route   GET /api/referrals/my-referrals
@@ -47,7 +49,11 @@ export const getMyEarnings = async (req, res) => {
         });
         const totalWithdrawn = withdrawals.reduce((acc, w) => acc + w.amount, 0);
 
-        const availableBalance = referralEarnings + rewardPointsValue - totalWithdrawn;
+        // Spent earnings (internal payments)
+        const spends = await ReferralSpend.find({ user: req.user._id });
+        const totalSpent = spends.reduce((acc, s) => acc + s.amount, 0);
+
+        const availableBalance = referralEarnings + rewardPointsValue - totalWithdrawn - totalSpent;
 
         res.json({
             referralEarnings,
@@ -55,6 +61,7 @@ export const getMyEarnings = async (req, res) => {
             rewardPoints: user.rewardPoints || 0,
             rewardPointsValue,
             totalWithdrawn,
+            totalSpent,
             availableBalance: Math.max(0, availableBalance),
             totalCreditedReferrals: creditedReferrals.length,
             totalPendingReferrals: pendingReferrals.length
@@ -91,7 +98,10 @@ export const requestWithdrawal = async (req, res) => {
         const approvedWithdrawals = await WithdrawalRequest.find({ user: req.user._id, status: 'approved' });
         const totalWithdrawn = approvedWithdrawals.reduce((acc, w) => acc + w.amount, 0);
 
-        const availableBalance = referralEarnings + rewardPointsValue - totalWithdrawn;
+        const spends = await ReferralSpend.find({ user: req.user._id });
+        const totalSpent = spends.reduce((acc, s) => acc + s.amount, 0);
+
+        const availableBalance = referralEarnings + rewardPointsValue - totalWithdrawn - totalSpent;
 
         if (amount > availableBalance) {
             return res.status(400).json({
@@ -135,7 +145,10 @@ export const getPayWithEarningsInfo = async (req, res) => {
         const approvedWithdrawals = await WithdrawalRequest.find({ user: req.user._id, status: 'approved' });
         const totalWithdrawn = approvedWithdrawals.reduce((acc, w) => acc + w.amount, 0);
 
-        const availableBalance = Math.max(0, referralEarnings + rewardPointsValue - totalWithdrawn);
+        const spends = await ReferralSpend.find({ user: req.user._id });
+        const totalSpent = spends.reduce((acc, s) => acc + s.amount, 0);
+
+        const availableBalance = Math.max(0, referralEarnings + rewardPointsValue - totalWithdrawn - totalSpent);
 
         if (availableBalance >= requiredAmount) {
             // Full coverage from earnings
@@ -157,6 +170,67 @@ export const getMyWithdrawals = async (req, res) => {
     try {
         const withdrawals = await WithdrawalRequest.find({ user: req.user._id }).sort({ createdAt: -1 });
         res.json(withdrawals);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Apply earnings to pay for a service
+// @route   POST /api/referrals/apply-earnings
+// @access  Private
+export const applyEarnings = async (req, res) => {
+    try {
+        const { amount, type, paymentRef } = req.body;
+        const user = await User.findById(req.user._id);
+
+        const creditedReferrals = await Referral.find({ referrer: req.user._id, status: 'credited' });
+        const referralEarnings = creditedReferrals.reduce((acc, r) => acc + r.commissionAmount, 0);
+        const rewardPointsValue = (user.rewardPoints || 0) * 10;
+
+        const approvedWithdrawals = await WithdrawalRequest.find({ user: req.user._id, status: 'approved' });
+        const totalWithdrawn = approvedWithdrawals.reduce((acc, w) => acc + w.amount, 0);
+
+        const spends = await ReferralSpend.find({ user: req.user._id });
+        const totalSpent = spends.reduce((acc, s) => acc + s.amount, 0);
+
+        const availableBalance = referralEarnings + rewardPointsValue - totalWithdrawn - totalSpent;
+
+        if (amount > availableBalance) {
+            return res.status(400).json({ message: 'Insufficient earnings balance' });
+        }
+
+        // 1. Create a Payment record for this transaction
+        const payment = await Payment.create({
+            user: req.user._id,
+            amount,
+            type, // 'subscription', 'search', 'nin_verification'
+            status: 'completed',
+            paymentMethod: 'earnings',
+            reference: paymentRef || `EARN-${req.user._id}-${Date.now()}`
+        });
+
+        // 2. Record the spend
+        await ReferralSpend.create({
+            user: req.user._id,
+            amount,
+            purpose: type,
+            paymentId: payment._id
+        });
+
+        // 3. Apply the payment effects locally if it's subscription or NIN
+        if (type === 'subscription') {
+            user.hasPaid = true;
+            const now = new Date();
+            const currentSubEnd = user.subscriptionEnd && user.subscriptionEnd > now ? user.subscriptionEnd : now;
+            user.subscriptionEnd = new Date(currentSubEnd.getTime() + 30 * 24 * 60 * 60 * 1000);
+            await user.save();
+        } else if (type === 'nin_verification') {
+
+            user.hasPaid = true;
+            await user.save();
+        }
+
+        res.json({ message: 'Payment successful using earnings', payment });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

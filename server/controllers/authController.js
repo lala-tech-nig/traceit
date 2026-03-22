@@ -39,7 +39,8 @@ const assignVerificationJob = async (newUserId) => {
 // @access  Public
 export const registerUser = async (req, res) => {
     try {
-        const { firstName, lastName, phoneNumber, homeAddress, email, password, role, mainVendorId, referralEmail } = req.body;
+        const { firstName, lastName, phoneNumber, homeAddress, email: rawEmail, password, role, mainVendorId, referralEmail } = req.body;
+        const email = rawEmail?.toLowerCase();
 
         const userExists = await User.findOne({ email });
 
@@ -123,8 +124,9 @@ export const registerUser = async (req, res) => {
 export const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
+        const lowerEmail = email?.toLowerCase();
 
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email: lowerEmail });
 
         if (user && (await user.matchPassword(password))) {
             res.json({
@@ -186,7 +188,8 @@ export const getUserProfile = async (req, res) => {
 export const verifyUserEmail = async (req, res) => {
     try {
         const { email } = req.query;
-        const user = await User.findOne({ email });
+        const lowerEmail = email?.toLowerCase();
+        const user = await User.findOne({ email: lowerEmail });
         if (user) {
             res.json({ firstName: user.firstName, lastName: user.lastName, email: user.email });
         } else {

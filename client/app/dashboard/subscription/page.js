@@ -10,6 +10,22 @@ export default function SubscriptionPage() {
     const { user, API_URL, login } = useAuth();
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
+    const [earnings, setEarnings] = useState(null);
+
+    const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+
+    useEffect(() => {
+        if (user) fetchEarnings();
+    }, [user]);
+
+    const fetchEarnings = async () => {
+        try {
+            const res = await axios.get(`${API_URL}/referrals/my-earnings`, config);
+            setEarnings(res.data);
+        } catch (err) {
+            console.error('Failed to fetch earnings', err);
+        }
+    };
 
     const isSubscribed = user?.subscriptionEnd && new Date(user.subscriptionEnd) > new Date();
     const expiryDate = user?.subscriptionEnd ? new Date(user.subscriptionEnd).toLocaleDateString() : 'No active subscription';
@@ -23,7 +39,7 @@ export default function SubscriptionPage() {
         try {
             await payWithPaystack({
                 email: user.email,
-                amount: 5000, // Assuming 5000 for pro plan
+                amount: 5000, 
                 description: 'TraceIt Pro Monthly Subscription',
                 reference,
                 onSuccess: async ({ reference: paystackRef }) => {
@@ -35,11 +51,11 @@ export default function SubscriptionPage() {
                             type: 'subscription'
                         }, config);
                         
-                        // Refresh user local state
                         const profileRes = await axios.get(`${API_URL}/auth/profile`, config);
                         login({ ...user, ...profileRes.data });
                         
                         setMessage({ type: 'success', text: 'Subscription renewed successfully!' });
+                        fetchEarnings();
                     } catch (err) {
                         setMessage({ type: 'error', text: 'Payment recorded but verification failed. Please contact support.' });
                     } finally {
@@ -55,6 +71,27 @@ export default function SubscriptionPage() {
             setLoading(false);
         }
     };
+
+    const handleApplyEarnings = async () => {
+        setLoading(true);
+        setMessage({ type: '', text: '' });
+        try {
+            await axios.post(`${API_URL}/referrals/apply-earnings`, { amount: 5000, type: 'subscription' }, config);
+            
+            // Refresh user local state
+            const profileRes = await axios.get(`${API_URL}/auth/profile`, config);
+            login({ ...user, ...profileRes.data });
+            
+            setMessage({ type: 'success', text: 'Subscription renewed successfully using earnings!' });
+            fetchEarnings();
+        } catch (err) {
+            setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to apply earnings' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
 
     return (
         <div className="max-w-4xl mx-auto space-y-10 pb-20">
@@ -125,13 +162,26 @@ export default function SubscriptionPage() {
                         <h2 className="text-2xl font-black mb-4">Extend Your Access</h2>
                         <p className="text-neutral-400 font-medium text-sm mb-8">Keep your professional tools active. Renewing now adds 30 days to your current cycle.</p>
 
-                        <button 
-                            disabled={loading}
-                            onClick={handleRenew}
-                            className="mt-auto w-full bg-primary hover:bg-primary-dark text-white font-black py-5 rounded-2xl shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Zap className="w-5 h-5 fill-current" /> Renew with Paystack</>}
-                        </button>
+                        <div className="flex flex-col gap-3 mt-auto">
+                            <button 
+                                disabled={loading}
+                                onClick={handleRenew}
+                                className="w-full bg-primary hover:bg-primary-dark text-white font-black py-5 rounded-2xl shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Zap className="w-5 h-5 fill-current" /> Renew with Paystack</>}
+                            </button>
+
+                            {earnings?.availableBalance >= 5000 && (
+                                <button 
+                                    disabled={loading}
+                                    onClick={handleApplyEarnings}
+                                    className="w-full bg-white/10 hover:bg-white/20 text-white font-black py-5 rounded-2xl border border-white/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                >
+                                    {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <><CheckCircle2 className="w-5 h-5" /> Pay with Earnings (₦5,000)</>}
+                                </button>
+                            )}
+                        </div>
+
                     </div>
                 </div>
             </div>

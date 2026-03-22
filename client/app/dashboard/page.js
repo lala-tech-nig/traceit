@@ -144,6 +144,20 @@ export default function DashboardPage() {
 
     const handleSearchPayment = async () => {
         setSearchLoading(true);
+        // Check earnings first
+        try {
+            const earnRes = await axios.post(`${API_URL}/referrals/pay-with-earnings-info`, { requiredAmount: 500 }, config);
+            if (earnRes.data.availableBalance > 0) {
+                // If they have any earnings, we show a choice or just auto-apply if sufficient
+                // For simplicity in this UI, if they have enough, we'll ask. 
+                // But since search is triggered by a form submit, let's add a state to show a "Pay Choice" modal or inline notice.
+                setSearchError(`Notice: You have ₦${earnRes.data.availableBalance} in earnings. [PAY_WITH_EARNINGS_BUTTON]`);
+                // Wait, I should probably just add a small "Use Earnings" button below the search error.
+                setSearchLoading(false);
+                return;
+            }
+        } catch (err) { console.error(err); }
+
         const reference = `search-${user._id}-${Date.now()}`;
         try {
             await payWithPaystack({
@@ -167,6 +181,21 @@ export default function DashboardPage() {
             setSearchLoading(false);
         }
     };
+
+    const handleApplyEarnings = async (amount, type, onDone) => {
+        setVerifyLoading(true);
+        try {
+            await axios.post(`${API_URL}/referrals/apply-earnings`, { amount, type }, config);
+            const profileRes = await axios.get(`${API_URL}/auth/profile`, config);
+            login({ ...user, ...profileRes.data });
+            if (onDone) onDone();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to apply earnings');
+        } finally {
+            setVerifyLoading(false);
+        }
+    };
+
 
     const handlePayment = async () => {
         setVerifyLoading(true);
@@ -429,10 +458,23 @@ export default function DashboardPage() {
                     </form>
 
                     {searchError && (
-                        <p className="text-red-500 text-sm font-bold mt-4 animate-in slide-in-from-top-2">
-                            {searchError}
-                        </p>
+                        <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-2xl animate-in slide-in-from-top-2">
+                            <p className="text-red-500 text-sm font-bold">
+                                {searchError.includes('[PAY_WITH_EARNINGS_BUTTON]') 
+                                    ? searchError.replace('[PAY_WITH_EARNINGS_BUTTON]', '') 
+                                    : searchError}
+                            </p>
+                            {searchError.includes('[PAY_WITH_EARNINGS_BUTTON]') && (
+                                <button 
+                                    onClick={() => handleApplyEarnings(500, 'search', () => handleSearch())}
+                                    className="mt-2 bg-primary text-white text-xs font-black px-4 py-2 rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all"
+                                >
+                                    Use Earnings (₦500)
+                                </button>
+                            )}
+                        </div>
                     )}
+
 
                     {searchResult && (
                         <div className="mt-8 p-6 bg-neutral-50 rounded-3xl border border-neutral-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -751,14 +793,28 @@ export default function DashboardPage() {
 
                                     {error && <p className="text-red-500 text-sm font-bold text-center">{error}</p>}
 
-                                    <button
-                                        disabled={verifyLoading}
-                                        onClick={handlePayment}
-                                        className="w-full bg-neutral-900 text-white font-black py-5 rounded-2xl hover:bg-black transition-all shadow-xl shadow-black/20 flex items-center justify-center gap-3 disabled:opacity-50"
-                                    >
-                                        {verifyLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Pay via Secure Gateway'}
-                                        <ShieldAlert className="w-5 h-5" />
-                                    </button>
+                                    <div className="flex flex-col gap-3">
+                                        <button
+                                            disabled={verifyLoading}
+                                            onClick={handlePayment}
+                                            className="w-full bg-neutral-900 text-white font-black py-5 rounded-2xl hover:bg-black transition-all shadow-xl shadow-black/20 flex items-center justify-center gap-3 disabled:opacity-50"
+                                        >
+                                            {verifyLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Pay via Secure Gateway'}
+                                            <ShieldAlert className="w-5 h-5" />
+                                        </button>
+
+                                        {referralEarnings?.availableBalance >= 500 && (
+                                            <button
+                                                disabled={verifyLoading}
+                                                onClick={() => handleApplyEarnings(500, 'nin_verification', () => setVerifyStep(3))}
+                                                className="w-full bg-primary/10 text-primary font-black py-5 rounded-2xl hover:bg-primary/20 transition-all flex items-center justify-center gap-3 disabled:opacity-50 border border-primary/20"
+                                            >
+                                                {verifyLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Pay with Earnings (₦500)'}
+                                                <TrendingUp className="w-5 h-5" />
+                                            </button>
+                                        )}
+                                    </div>
+
 
                                     <p className="text-center text-[10px] text-neutral-400 font-bold uppercase tracking-widest">Powered by Traceit Global Registry</p>
                                 </div>

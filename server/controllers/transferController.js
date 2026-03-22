@@ -10,7 +10,9 @@ export const initiateTransfer = async (req, res) => {
         if (!req.user.isApproved) {
             return res.status(403).json({ message: 'Account not approved. Please complete identity verification to initiate transfers.' });
         }
-        const { deviceId, targetUserEmail, comment } = req.body;
+        const { deviceId, targetUserEmail: rawEmail, comment } = req.body;
+        const targetUserEmail = rawEmail?.toLowerCase();
+
 
         const device = await Device.findById(deviceId);
         if (!device) {
@@ -62,7 +64,8 @@ export const acceptTransfer = async (req, res) => {
         }
 
         // If the targetUser was not registered initially, we try matching by email
-        const isTargetUserByEmail = transfer.targetUserEmail === req.user.email;
+        const isTargetUserByEmail = transfer.targetUserEmail?.toLowerCase() === req.user.email?.toLowerCase();
+
         const isTargetUserById = transfer.targetUser && transfer.targetUser.toString() === req.user._id.toString();
 
         if (!isTargetUserByEmail && !isTargetUserById) {
@@ -110,7 +113,8 @@ export const rejectTransfer = async (req, res) => {
             return res.status(400).json({ message: 'Transfer is no longer pending' });
         }
 
-        const isTargetUserByEmail = transfer.targetUserEmail === req.user.email;
+        const isTargetUserByEmail = transfer.targetUserEmail?.toLowerCase() === req.user.email?.toLowerCase();
+
         const isTargetUserById = transfer.targetUser && transfer.targetUser.toString() === req.user._id.toString();
 
         if (!isTargetUserByEmail && !isTargetUserById) {
@@ -134,9 +138,10 @@ export const getIncomingTransfers = async (req, res) => {
         const transfers = await Transfer.find({
             $or: [
                 { targetUser: req.user._id, status: 'pending' },
-                { targetUserEmail: req.user.email, status: 'pending' }
+                { targetUserEmail: req.user.email.toLowerCase(), status: 'pending' }
             ]
         })
+
         .populate('device', 'name serialNumber')
         .populate('initiator', 'firstName lastName email')
         .lean();

@@ -13,6 +13,7 @@ const seedAdmin = async () => {
             firstName: 'Super',
             lastName: 'Admin',
             email: 'tech@traceit.com.ng',
+
             password: 'Lalatech2021.',
             phoneNumber: '00000000000',
             role: 'admin',

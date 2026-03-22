@@ -5,7 +5,8 @@ import {
     getMyEarnings,
     requestWithdrawal,
     getPayWithEarningsInfo,
-    getMyWithdrawals
+    getMyWithdrawals,
+    applyEarnings
 } from '../controllers/referralController.js';
 
 const router = express.Router();
@@ -15,5 +16,7 @@ router.get('/my-earnings', protect, getMyEarnings);
 router.get('/withdrawals', protect, getMyWithdrawals);
 router.post('/request-withdrawal', protect, requestWithdrawal);
 router.post('/pay-with-earnings-info', protect, getPayWithEarningsInfo);
+router.post('/apply-earnings', protect, applyEarnings);
 
 export default router;
+
