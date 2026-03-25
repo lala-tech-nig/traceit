@@ -26,11 +26,6 @@ export default function WhatsAppButton() {
 
     return (
         <div className="whatsapp-wrapper">
-            {/* Speech Bubble */}
-            <div className={`whatsapp-bubble ${showBubble ? 'whatsapp-bubble--visible' : ''}`}>
-                <span className="whatsapp-wave">👋</span>
-                <span>How can I help you?</span>
-            </div>
 
             {/* WhatsApp Floating Button Container */}
             <div className="relative flex items-center justify-center">

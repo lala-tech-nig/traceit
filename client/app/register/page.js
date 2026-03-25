@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
-import { UploadCloud, Users, Eye, EyeOff } from 'lucide-react';
+import { UploadCloud, Users, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 
 export default function RegisterPage() {
     const [formData, setFormData] = useState({
@@ -17,18 +17,40 @@ export default function RegisterPage() {
         referralEmail: ''
     });
     const [image, setImage] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const { register } = useAuth();
+
+    useEffect(() => {
+        return () => {
+            if (imagePreview) URL.revokeObjectURL(imagePreview);
+        };
+    }, [imagePreview]);
+
+    const isFormValid = () => {
+        return (
+            formData.firstName.trim() !== '' &&
+            formData.lastName.trim() !== '' &&
+            formData.phoneNumber.trim() !== '' &&
+            formData.homeAddress.trim() !== '' &&
+            formData.email.trim() !== '' &&
+            formData.password.trim() !== '' &&
+            image !== null
+        );
+    };
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
     const handleImageChange = (e) => {
-        if (e.target.files[0]) {
-            setImage(e.target.files[0]);
+        const file = e.target.files[0];
+        if (file) {
+            setImage(file);
+            const previewUrl = URL.createObjectURL(file);
+            setImagePreview(previewUrl);
         }
     };
 
@@ -188,21 +210,35 @@ export default function RegisterPage() {
 
                         {/* Profile Image */}
                         <div>
-                            <label className="block text-sm font-semibold text-neutral-700 mb-2">Profile Image</label>
+                            <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                                Profile Image <span className="text-red-500 font-bold">*</span>
+                            </label>
                             <div className="relative border-2 border-dashed border-neutral-300 rounded-xl p-6 flex flex-col items-center justify-center hover:bg-neutral-50 hover:border-primary transition-all cursor-pointer">
                                 <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required />
-                                <UploadCloud className="w-8 h-8 text-neutral-400 mb-2" />
-                                <span className="text-sm font-medium text-neutral-500">
-                                    {image ? image.name : "Click to upload an image"}
-                                </span>
+                                {imagePreview ? (
+                                    <div className="relative w-full aspect-video rounded-lg overflow-hidden">
+                                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                            <span className="text-white text-xs font-bold">Change Image</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <UploadCloud className="w-8 h-8 text-neutral-400 mb-2" />
+                                        <span className="text-sm font-medium text-neutral-500 text-center">
+                                            Click or drag to upload a profile photo <br />
+                                            <span className="text-[10px] text-neutral-400 italic">(Compulsory for identification)</span>
+                                        </span>
+                                    </>
+                                )}
                             </div>
                         </div>
 
                         <div className="pt-2">
                             <button
                                 type="submit"
-                                disabled={loading}
-                                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                                disabled={loading || !isFormValid()}
+                                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {loading ? 'Creating Account...' : 'Create Account'}
                             </button>
