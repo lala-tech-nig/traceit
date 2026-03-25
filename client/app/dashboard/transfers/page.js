@@ -11,6 +11,7 @@ export default function TransfersPage() {
     const [outgoingTransfers, setOutgoingTransfers] = useState([]);
     const [myDevices, setMyDevices] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [step, setStep] = useState(1);
 
     // Initiate transfer state
     const [showInitiateForm, setShowInitiateForm] = useState(false);
@@ -141,62 +142,120 @@ export default function TransfersPage() {
             )}
 
             {showInitiateForm && (
-                <div className="bg-white border border-neutral-200 p-6 md:p-8 rounded-3xl shadow-sm mb-8">
-                    <h2 className="text-xl font-bold text-foreground mb-6">Transfer a Device</h2>
-                    <form className="grid grid-cols-1 md:grid-cols-2 gap-6" onSubmit={handleInitiate}>
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-neutral-700 mb-1">Select Device</label>
-                            <select
-                                required
-                                value={transferForm.deviceId}
-                                onChange={(e) => setTransferForm({ ...transferForm, deviceId: e.target.value })}
-                                className="w-full px-4 py-3 border border-neutral-300 rounded-xl font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
-                            >
-                                <option value="" disabled>-- Select a device from your inventory --</option>
-                                {myDevices.map(d => (
-                                    <option key={d._id} value={d._id}>{d.name} ({d.serialNumber})</option>
-                                ))}
-                            </select>
+                <div className="bg-white border border-neutral-200 p-6 md:p-10 rounded-[2.5rem] shadow-xl mb-8 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-neutral-100">
+                        <div 
+                            className="h-full bg-primary transition-all duration-500 ease-out" 
+                            style={{ width: `${(step / 2) * 100}%` }}
+                        ></div>
+                    </div>
+
+                    <div className="mb-8 flex justify-between items-center">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary bg-primary/10 px-3 py-1 rounded-full">Step {step} of 2</span>
+                        <div className="flex gap-1.5">
+                            {[1, 2].map((s) => (
+                                <div key={s} className={`w-2 h-2 rounded-full transition-all duration-300 ${s <= step ? 'bg-primary w-4' : 'bg-neutral-200'}`} />
+                            ))}
                         </div>
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-neutral-700 mb-1">Target User Email</label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="email"
-                                    required
-                                    value={transferForm.targetUserEmail}
-                                    onChange={(e) => {
-                                        setTransferForm({ ...transferForm, targetUserEmail: e.target.value });
-                                        setVerifiedUser(null); // Reset verification on change
-                                    }}
-                                    className="w-full px-4 py-3 border border-neutral-300 rounded-xl font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                                    placeholder="newowner@example.com"
-                                />
-                                <button type="button" onClick={verifyEmail} disabled={verifying || !transferForm.targetUserEmail} className="bg-neutral-100 text-neutral-700 px-4 rounded-xl font-bold hover:bg-neutral-200 transition-colors whitespace-nowrap">
-                                    {verifying ? 'Verifying...' : 'Verify Email'}
-                                </button>
+                    </div>
+
+                    {step === 1 ? (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+                            <h2 className="text-2xl font-black text-foreground mb-2">Identify Receiver</h2>
+                            <p className="text-neutral-500 mb-8 font-medium">Verify the email of the person you want to transfer the gadget to.</p>
+                            
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-neutral-600 mb-2">Target User Email</label>
+                                    <div className="flex gap-3">
+                                        <input
+                                            type="email"
+                                            required
+                                            value={transferForm.targetUserEmail}
+                                            onChange={(e) => {
+                                                setTransferForm({ ...transferForm, targetUserEmail: e.target.value });
+                                                setVerifiedUser(null);
+                                            }}
+                                            className="w-full px-5 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+                                            placeholder="newowner@example.com"
+                                        />
+                                        <button type="button" onClick={verifyEmail} disabled={verifying || !transferForm.targetUserEmail} className="bg-neutral-100 text-neutral-700 px-6 rounded-2xl font-bold hover:bg-neutral-200 transition-all whitespace-nowrap">
+                                            {verifying ? '...' : 'Verify'}
+                                        </button>
+                                    </div>
+                                    {verifiedUser && (
+                                        <p className="text-sm text-green-600 mt-4 font-black flex items-center gap-2 bg-green-50 p-4 rounded-2xl border border-green-100">
+                                            <Check className="w-5 h-5" />
+                                            Verified: {verifiedUser.firstName} {verifiedUser.lastName}
+                                        </p>
+                                    )}
+                                    <p className="text-xs text-neutral-400 mt-4 italic font-medium">The new owner must have a verified TraceIt account to receive gadgets.</p>
+                                </div>
+
+                                <div className="flex justify-end pt-4">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setStep(2)}
+                                        disabled={!verifiedUser}
+                                        className="bg-primary text-white px-10 py-4 rounded-2xl font-extrabold shadow-lg shadow-primary/25 hover:bg-primary-dark transition-all disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        Next
+                                        <Send className="w-4 h-4 ml-1" />
+                                    </button>
+                                </div>
                             </div>
-                            {verifiedUser && (
-                                <p className="text-sm text-green-600 mt-2 font-bold px-2">✓ Verified: {verifiedUser.firstName} {verifiedUser.lastName}</p>
-                            )}
-                            <p className="text-xs text-neutral-500 mt-2">The new owner must log in to their TraceIt account to accept the transfer.</p>
                         </div>
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-neutral-700 mb-1">Transfer Comment / Note</label>
-                            <textarea
-                                required
-                                value={transferForm.comment}
-                                onChange={(e) => setTransferForm({ ...transferForm, comment: e.target.value })}
-                                className="w-full px-4 py-3 border border-neutral-300 rounded-xl font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none min-h-[100px]"
-                                placeholder="e.g. Sold gadget on 12/Oct, in perfect condition."
-                            />
+                    ) : (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+                            <h2 className="text-2xl font-black text-foreground mb-2">Transfer Details</h2>
+                            <p className="text-neutral-500 mb-8 font-medium">Select the device and add a note for the transfer.</p>
+
+                            <form className="space-y-6" onSubmit={handleInitiate}>
+                                <div>
+                                    <label className="block text-sm font-bold text-neutral-600 mb-2">Select Device</label>
+                                    <select
+                                        required
+                                        value={transferForm.deviceId}
+                                        onChange={(e) => setTransferForm({ ...transferForm, deviceId: e.target.value })}
+                                        className="w-full px-5 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all appearance-none"
+                                    >
+                                        <option value="" disabled>-- Select a device --</option>
+                                        {myDevices.map(d => (
+                                            <option key={d._id} value={d._id}>{d.name} ({d.serialNumber})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-neutral-600 mb-2">Transfer Note</label>
+                                    <textarea
+                                        required
+                                        value={transferForm.comment}
+                                        onChange={(e) => setTransferForm({ ...transferForm, comment: e.target.value })}
+                                        className="w-full px-5 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none min-h-[120px] transition-all"
+                                        placeholder="Reason for transfer (e.g. Sold gadget to Mr. John)"
+                                    />
+                                </div>
+
+                                <div className="flex gap-4 pt-4">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setStep(1)} 
+                                        className="flex-1 bg-neutral-100 text-neutral-600 px-8 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
+                                    >
+                                        Back
+                                    </button>
+                                    <button 
+                                        disabled={initiating || !transferForm.deviceId || !transferForm.comment} 
+                                        type="submit" 
+                                        className="flex-[2] bg-primary text-white px-10 py-4 rounded-2xl font-extrabold shadow-lg shadow-primary/25 hover:bg-primary-dark transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {initiating ? 'Processing...' : 'Confirm Transfer'}
+                                        {!initiating && <Check className="w-5 h-5" />}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                        <div className="md:col-span-2 flex justify-end">
-                            <button disabled={initiating || myDevices.length === 0 || !verifiedUser} type="submit" className="bg-foreground text-white px-8 py-3 rounded-xl font-bold hover:bg-neutral-800 transition-colors disabled:opacity-70">
-                                {initiating ? 'Initiating...' : 'Confirm Transfer Request'}
-                            </button>
-                        </div>
-                    </form>
+                    )}
                 </div>
             )}
 

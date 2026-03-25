@@ -29,6 +29,7 @@ export default function DashboardPage() {
     const [reportForm, setReportForm] = useState({ address: '', sellerDescription: '' });
     const [reportLoading, setReportLoading] = useState(false);
     const [reportMsg, setReportMsg] = useState({ type: '', text: '' });
+    const [reportStep, setReportStep] = useState(1);
 
     // Referral state
     const [referralEarnings, setReferralEarnings] = useState(null);
@@ -876,41 +877,84 @@ export default function DashboardPage() {
                                 <p className="text-neutral-500 font-medium leading-relaxed">Please provide the location and description of the person in possession of this stolen/lost device. You earn reward points for accurate reports!</p>
                             </div>
 
+                            <div className="mb-8 flex justify-between items-center">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary bg-primary/10 px-3 py-1 rounded-full">Step {reportStep} of 2</span>
+                                <div className="flex gap-1.5">
+                                    {[1, 2].map((s) => (
+                                        <div key={s} className={`w-2 h-2 rounded-full transition-all duration-300 ${s <= reportStep ? 'bg-primary w-4' : 'bg-neutral-200'}`} />
+                                    ))}
+                                </div>
+                            </div>
+
                             {reportMsg.text && (
                                 <div className={`p-4 rounded-xl font-bold mb-6 text-center ${reportMsg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                                     {reportMsg.text}
                                 </div>
                             )}
 
-                            <form onSubmit={handleReportSubmit} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Device Location / Address</label>
-                                    <input
-                                        required
-                                        type="text"
-                                        value={reportForm.address}
-                                        onChange={(e) => setReportForm({ ...reportForm, address: e.target.value })}
-                                        placeholder="e.g. Shop 12, Computer Village, Ikeja"
-                                        className="w-full px-6 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Seller / Possessor Description</label>
-                                    <textarea
-                                        required
-                                        value={reportForm.sellerDescription}
-                                        onChange={(e) => setReportForm({ ...reportForm, sellerDescription: e.target.value })}
-                                        placeholder="Describe the person who brought the device..."
-                                        className="w-full px-6 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium h-28 focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
-                                    />
-                                </div>
-                                <button
-                                    disabled={reportLoading}
-                                    type="submit"
-                                    className="w-full bg-red-600 text-white font-black py-5 rounded-2xl hover:bg-red-700 transition-all shadow-xl shadow-red-600/20 flex items-center justify-center gap-3 disabled:opacity-50 mt-4"
-                                >
-                                    {reportLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Submit Report'}
-                                </button>
+                            <form onSubmit={handleReportSubmit} className="space-y-6">
+                                {reportStep === 1 ? (
+                                    <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Device Location / Address</label>
+                                                <input
+                                                    required
+                                                    type="text"
+                                                    value={reportForm.address}
+                                                    onChange={(e) => setReportForm({ ...reportForm, address: e.target.value })}
+                                                    placeholder="e.g. Shop 12, Computer Village, Ikeja"
+                                                    className="w-full px-6 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+                                                />
+                                            </div>
+                                            <p className="text-xs text-neutral-400 font-medium italic">Enter the exact address where you spotted this device.</p>
+                                        </div>
+                                        <div className="flex justify-end pt-6">
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setReportStep(2)}
+                                                disabled={!reportForm.address}
+                                                className="bg-primary text-white px-10 py-4 rounded-2xl font-extrabold shadow-lg shadow-primary/25 hover:bg-primary-dark transition-all disabled:opacity-50 flex items-center gap-2"
+                                            >
+                                                Next Details
+                                                <ChevronRight className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-black text-neutral-700 mb-2 uppercase tracking-wide">Seller / Possessor Description</label>
+                                                <textarea
+                                                    required
+                                                    value={reportForm.sellerDescription}
+                                                    onChange={(e) => setReportForm({ ...reportForm, sellerDescription: e.target.value })}
+                                                    placeholder="Describe the person who brought the device..."
+                                                    className="w-full px-6 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium h-32 focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+                                                />
+                                            </div>
+                                            <p className="text-xs text-neutral-400 font-medium italic">Accurate descriptions help us and the owner recover the gadget faster.</p>
+                                        </div>
+                                        <div className="flex gap-4 pt-6">
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setReportStep(1)} 
+                                                className="flex-1 bg-neutral-100 text-neutral-600 px-8 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all font-black text-xs uppercase"
+                                            >
+                                                Back
+                                            </button>
+                                            <button
+                                                disabled={reportLoading || !reportForm.sellerDescription}
+                                                type="submit"
+                                                className="flex-[2] bg-red-600 text-white font-black py-4 rounded-2xl hover:bg-red-700 transition-all shadow-xl shadow-red-600/20 flex items-center justify-center gap-3 disabled:opacity-50"
+                                            >
+                                                {reportLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShieldAlert className="w-5 h-5" />}
+                                                {reportLoading ? 'Submitting...' : 'Submit Report'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </form>
                         </div>
                     </div>

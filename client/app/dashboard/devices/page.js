@@ -282,21 +282,21 @@ export default function DevicesPage() {
                                 ))}
                             </div>
                         </div>
-                    ) : (
+                    ) : step === 2 ? (
                         <div className="animate-in fade-in slide-in-from-right-4 duration-500">
                             <div className="flex items-center gap-4 mb-8 pb-6 border-b border-neutral-100">
                                 <button onClick={handleBack} className="p-2 bg-neutral-100 rounded-full text-neutral-500 hover:text-primary transition-colors">
                                     <ChevronLeft className="w-5 h-5" />
                                 </button>
                                 <div>
-                                    <h2 className="text-2xl font-black text-foreground leading-none mb-1">Device Details</h2>
+                                    <h2 className="text-2xl font-black text-foreground leading-none mb-1">Basic Specs</h2>
                                     <p className="text-sm font-bold text-primary flex items-center gap-1 uppercase tracking-wider">
-                                        {categoryConfig[selectedCategory]?.label} Registration
+                                        Step 2 of 3 • {categoryConfig[selectedCategory]?.label}
                                     </p>
                                 </div>
                             </div>
 
-                            <form className="grid grid-cols-1 md:grid-cols-2 gap-6" onSubmit={handleAddDevice}>
+                            <form className="grid grid-cols-1 md:grid-cols-2 gap-6" onSubmit={(e) => e.preventDefault()}>
                                 <div className="space-y-1">
                                     <label className="block text-sm font-bold text-neutral-600">Give it a Name</label>
                                     <input required name="name" value={formData.name} onChange={handleChange} className="w-full px-5 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all" placeholder="e.g. Work Laptop or Daily iPhone" />
@@ -313,6 +313,42 @@ export default function DevicesPage() {
                                     <label className="block text-sm font-bold text-neutral-600">Color</label>
                                     <input required name="color" value={formData.color} onChange={handleChange} className="w-full px-5 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all" placeholder="e.g. Space Gray, Silver" />
                                 </div>
+
+                                <div className="md:col-span-2 flex justify-end pt-4 gap-4">
+                                    <button 
+                                        type="button" 
+                                        onClick={handleBack} 
+                                        className="bg-neutral-100 text-neutral-600 px-8 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-colors"
+                                    >
+                                        Change Category
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setStep(3)}
+                                        disabled={!formData.name || !formData.brand || !formData.model || !formData.color}
+                                        className="bg-primary text-white px-10 py-4 rounded-2xl font-extrabold shadow-lg shadow-primary/25 hover:bg-primary-dark transition-all disabled:opacity-70 flex items-center gap-2"
+                                    >
+                                        Next
+                                        <ChevronRight className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    ) : (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+                            <div className="flex items-center gap-4 mb-8 pb-6 border-b border-neutral-100">
+                                <button onClick={() => setStep(2)} className="p-2 bg-neutral-100 rounded-full text-neutral-500 hover:text-primary transition-colors">
+                                    <ChevronLeft className="w-5 h-5" />
+                                </button>
+                                <div>
+                                    <h2 className="text-2xl font-black text-foreground leading-none mb-1">Identity & Proof</h2>
+                                    <p className="text-sm font-bold text-primary flex items-center gap-1 uppercase tracking-wider">
+                                        Step 3 of 3 • {categoryConfig[selectedCategory]?.label}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <form className="grid grid-cols-1 md:grid-cols-2 gap-6" onSubmit={handleAddDevice}>
                                 <div className="space-y-1">
                                     <label className="block text-sm font-bold text-neutral-600">Serial Number (S/N)</label>
                                     <input required name="serialNumber" value={formData.serialNumber} onChange={handleChange} className="w-full px-5 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all font-mono" placeholder="Unique Serial ID" />
@@ -342,7 +378,7 @@ export default function DevicesPage() {
                                 <div className="md:col-span-2 flex justify-end pt-4 gap-4">
                                     <button 
                                         type="button" 
-                                        onClick={handleBack} 
+                                        onClick={() => setStep(2)} 
                                         className="bg-neutral-100 text-neutral-600 px-8 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-colors"
                                     >
                                         Back
