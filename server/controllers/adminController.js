@@ -12,6 +12,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import { cloudinary } from '../config/cloudinary.js';
+import axios from 'axios';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -288,7 +289,8 @@ export const confirmPayment = async (req, res) => {
 export const downloadBackup = async (req, res) => {
     try {
         const zip = new AdmZip();
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const now = new Date();
+        const timestamp = now.toISOString().replace(/T/, '_').replace(/:/g, '-').slice(0, 19);
 
         // ── 1. Dump every MongoDB collection ──────────────────────────────────
         const db = mongoose.connection.db;
@@ -301,14 +303,18 @@ export const downloadBackup = async (req, res) => {
         }
 
         // ── 2. Fetch & bundle Cloudinary images ───────────────────────────────
-        let nextCursor = null;
+        let nextCursor = undefined;
         let imageIndex = 0;
         do {
-            const listOptions = { type: 'upload', prefix: 'traceit_uploads', max_results: 100 };
-            if (nextCursor) listOptions.next_cursor = nextCursor;
+            const listOptions = {
+                resource_type: 'image',
+                type: 'upload',
+                max_results: 100,
+                ...(nextCursor ? { next_cursor: nextCursor } : {})
+            };
 
             const result = await cloudinary.api.resources(listOptions);
-            nextCursor = result.next_cursor || null;
+            nextCursor = result.next_cursor || undefined;
 
             for (const resource of result.resources) {
                 try {
@@ -325,16 +331,17 @@ export const downloadBackup = async (req, res) => {
 
         // ── 3. Add a manifest ─────────────────────────────────────────────────
         const manifest = {
-            generatedAt: new Date().toISOString(),
+            generatedAt: now.toISOString(),
             collections: collections.map(c => c.name),
             imageCount: imageIndex
         };
         zip.addFile('manifest.json', Buffer.from(JSON.stringify(manifest, null, 2), 'utf8'));
 
         const zipBuffer = await zip.toBufferPromise();
+        const filename = `traceit-backup-${timestamp}.zip`;
 
         res.set('Content-Type', 'application/zip');
-        res.set('Content-Disposition', `attachment; filename=traceit-backup-${timestamp}.zip`);
+        res.set('Content-Disposition', `attachment; filename="${filename}"`);
         res.send(zipBuffer);
     } catch (error) {
         console.error('Backup generation failed:', error);
