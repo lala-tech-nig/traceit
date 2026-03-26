@@ -317,14 +317,21 @@ export const downloadBackup = async (req, res) => {
             nextCursor = result.next_cursor || undefined;
 
             for (const resource of result.resources) {
-                try {
-                    const imgRes = await axios.get(resource.secure_url, { responseType: 'arraybuffer', timeout: 15000 });
-                    const ext = resource.format || 'jpg';
-                    const safeName = resource.public_id.replace(/[/\\:*?"<>|]/g, '_');
-                    zip.addFile(`images/${safeName}.${ext}`, Buffer.from(imgRes.data));
-                    imageIndex++;
-                } catch (imgErr) {
-                    console.warn(`Could not download image ${resource.public_id}:`, imgErr.message);
+                let downloaded = false;
+                for (let attempt = 1; attempt <= 2; attempt++) {
+                    try {
+                        const imgRes = await axios.get(resource.secure_url, { responseType: 'arraybuffer', timeout: 45000 });
+                        const ext = resource.format || 'jpg';
+                        const safeName = resource.public_id.replace(/[/\\:*?"<>|]/g, '_');
+                        zip.addFile(`images/${safeName}.${ext}`, Buffer.from(imgRes.data));
+                        imageIndex++;
+                        downloaded = true;
+                        break;
+                    } catch (imgErr) {
+                        if (attempt === 2) {
+                            console.warn(`Skipped image after ${attempt} attempts — ${resource.public_id}: ${imgErr.message}`);
+                        }
+                    }
                 }
             }
         } while (nextCursor);
