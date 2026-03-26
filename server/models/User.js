@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema({
     isApproved: { type: Boolean, default: false },
     isSuspended: { type: Boolean, default: false },
     suspensionReason: { type: String, default: '' },
+    nin: { type: String, default: '' },
     ninVerified: { type: Boolean, default: false },
     hasPaid: { type: Boolean, default: false },
     image: { type: String, default: null },
@@ -22,6 +23,8 @@ const userSchema = new mongoose.Schema({
     subscriptionStart: { type: Date },
     subscriptionEnd: { type: Date },
     // Verificator fields
+    isVerificator: { type: Boolean, default: false },
+    verificatorStatus: { type: String, enum: ['none', 'pending', 'approved', 'rejected', 'suspended'], default: 'none' },
     verificatorAreaOfFocus: { type: String, default: '' },
     verificatorTarget: {
         daily: { type: Number, default: 0 },

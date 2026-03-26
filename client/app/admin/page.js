@@ -54,7 +54,11 @@ export default function AdminDashboard() {
     const [isSearching, setIsSearching] = useState(false);
     const [processLoading, setProcessLoading] = useState(null);
     const [message, setMessage] = useState({ type: '', text: '' });
-    const [activeTab, setActiveTab] = useState('overview'); // overview, approvals, accounts, logs, reports, ads
+    const [backupLoading, setBackupLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState('overview'); // overview, approvals, accounts, logs, reports, ads, verificators
+    const [verificators, setVerificators] = useState([]);
+    const [verifications, setVerifications] = useState([]);
+    const [verifLoading, setVerifLoading] = useState(false);
     
     // Ads and Reports State
     const [adsLoading, setAdsLoading] = useState(false);
@@ -169,6 +173,30 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleDownloadBackup = async () => {
+        setBackupLoading(true);
+        try {
+            const response = await fetch(`${API_URL}/admin/backup`, {
+                headers: { Authorization: `Bearer ${user.token}` }
+            });
+            if (!response.ok) throw new Error('Backup failed');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `traceit-backup-${new Date().toISOString().slice(0,10)}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            setMessage({ type: 'success', text: 'Backup downloaded successfully!' });
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Backup failed: ' + (error.message || 'Unknown error') });
+        } finally {
+            setBackupLoading(false);
+        }
+    };
+
     const handleToggleSuspension = async (userId, isCurrentlySuspended) => {
         const action = isCurrentlySuspended ? 'restore' : 'restrict';
         const reason = !isCurrentlySuspended ? window.prompt("Enter reason for restriction (optional):", "Policy violation") : "";
@@ -237,11 +265,44 @@ export default function AdminDashboard() {
         }
     };
 
+    const fetchVerificators = async () => {
+        setVerifLoading(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            const [vRes, jobsRes] = await Promise.all([
+                axios.get(`${API_URL}/admin/verificators`, config),
+                axios.get(`${API_URL}/admin/verificators/jobs`, config)
+            ]);
+            setVerificators(vRes.data);
+            setVerifications(jobsRes.data);
+        } catch (error) {
+            console.error("Failed to fetch verificators", error);
+        } finally {
+            setVerifLoading(false);
+        }
+    };
+
+    const handleManageVerificator = async (id, status) => {
+        if (!window.confirm(`Are you sure you want to change status to ${status}?`)) return;
+        setProcessLoading(id);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.put(`${API_URL}/admin/verificators/${id}/status`, { status }, config);
+            setMessage({ type: 'success', text: `Verificator status updated to ${status}!` });
+            fetchVerificators();
+        } catch (error) {
+            setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to update user' });
+        } finally {
+            setProcessLoading(null);
+        }
+    };
+
     useEffect(() => {
         if (activeTab === 'accounts' && user) fetchAllUsers();
         if (activeTab === 'reports' && user) fetchReports();
         if (activeTab === 'ads' && user) fetchAds();
         if (activeTab === 'analytics' && user) fetchAnalytics();
+        if (activeTab === 'verificators' && user) fetchVerificators();
     }, [activeTab, sortConfig, filterRole, filterStatus]);
 
     const fetchAnalytics = async (month, sortBy) => {
@@ -363,26 +424,7 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleDownloadBackup = async () => {
-        try {
-            setMessage({ type: 'success', text: 'Preparing backup download...' });
-            const response = await axios.get(`${API_URL}/admin/backup`, {
-                headers: { Authorization: `Bearer ${user.token}` },
-                responseType: 'blob'
-            });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `traceit-backup-${new Date().toISOString().slice(0,10)}.zip`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            setMessage({ type: 'success', text: 'Backup downloaded successfully!' });
-        } catch (error) {
-            console.error(error);
-            setMessage({ type: 'error', text: 'Failed to download backup. Please check console.' });
-        }
-    };
+
 
     const handleSort = (key) => {
         setSortConfig(prev => ({
@@ -400,6 +442,7 @@ export default function AdminDashboard() {
         { id: 'accounts',   label: 'All Accounts',          icon: Users },
         { id: 'approvals',  label: `Approvals (${pendingUsers.length})`, icon: Clock },
         { id: 'reports',    label: 'Device Reports',        icon: ShieldAlert },
+        { id: 'verificators',label: 'Field Agents / Verificators', icon: CheckCircle },
         { id: 'ads',        label: 'Broadcast Ads',         icon: Radio },
         { id: 'logs',       label: 'Activity Logs',         icon: SearchCode },
         { id: 'analytics',  label: 'Platform Analytics',    icon: BarChart2 },
@@ -473,10 +516,10 @@ export default function AdminDashboard() {
                             <Download className="w-3.5 h-3.5" /> Backup
                         </button>
                         <button 
-                            onClick={() => activeTab === 'accounts' ? fetchAllUsers() : activeTab === 'analytics' ? fetchAnalytics() : fetchData()}
+                            onClick={() => activeTab === 'accounts' ? fetchAllUsers() : activeTab === 'analytics' ? fetchAnalytics() : activeTab === 'verificators' ? fetchVerificators() : fetchData()}
                             className="flex items-center gap-2 px-4 py-2 bg-white border border-neutral-200 rounded-xl font-bold hover:bg-neutral-50 transition-all text-xs"
                         >
-                            <RefreshCw className={`w-3.5 h-3.5 ${loading||usersLoading||analyticsLoading ? 'animate-spin' : ''}`} /> Refresh
+                            <RefreshCw className={`w-3.5 h-3.5 ${loading||usersLoading||analyticsLoading||verifLoading ? 'animate-spin' : ''}`} /> Refresh
                         </button>
                     </div>
                 </header>
@@ -634,6 +677,15 @@ export default function AdminDashboard() {
                                         <option value="admin">Admins</option>
                                     </select>
                                 </div>
+                                <button
+                                    onClick={handleDownloadBackup}
+                                    disabled={backupLoading}
+                                    title="Download full database + image backup"
+                                    className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-xl text-sm font-black hover:bg-black transition-all shadow-md disabled:opacity-50"
+                                >
+                                    {backupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                    {backupLoading ? 'Backing up...' : 'Backup'}
+                                </button>
                             </div>
                         </div>
 
@@ -794,6 +846,112 @@ export default function AdminDashboard() {
                                                     >
                                                         {processLoading === u._id ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Approve Access'}
                                                     </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'verificators' && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="bg-white border border-neutral-200 rounded-[2.5rem] overflow-hidden shadow-sm">
+                        <div className="p-8 border-b border-neutral-100 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-xl font-black text-foreground">Field Agents & Applications</h3>
+                                <p className="text-sm font-medium text-neutral-500 mt-1">Manage user applications to become field verificators.</p>
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-widest">
+                                        <th className="px-8 py-4">User</th>
+                                        <th className="px-8 py-4">Focus Area</th>
+                                        <th className="px-8 py-4">Status</th>
+                                        <th className="px-8 py-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-50">
+                                    {verifLoading ? (
+                                        <tr><td colSpan="4" className="px-8 py-20 text-center"><Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" /></td></tr>
+                                    ) : verificators.length === 0 ? (
+                                        <tr><td colSpan="4" className="px-8 py-10 text-center text-neutral-400 font-bold">No verificator applications found.</td></tr>
+                                    ) : (
+                                        verificators.map(v => (
+                                            <tr key={v._id} className="hover:bg-neutral-50/50">
+                                                <td className="px-8 py-5">
+                                                    <p className="font-bold text-foreground">{v.firstName} {v.lastName}</p>
+                                                    <p className="text-xs text-neutral-500">{v.email}</p>
+                                                </td>
+                                                <td className="px-8 py-5 font-bold text-neutral-600">{v.verificatorAreaOfFocus || 'N/A'}</td>
+                                                <td className="px-8 py-5">
+                                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${v.verificatorStatus === 'approved' ? 'bg-green-50 text-green-700' : v.verificatorStatus === 'pending' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>{v.verificatorStatus}</span>
+                                                </td>
+                                                <td className="px-8 py-5 text-right flex justify-end gap-2">
+                                                    {v.verificatorStatus === 'pending' && (
+                                                        <>
+                                                            <button onClick={() => handleManageVerificator(v._id, 'approved')} className="bg-green-100 text-green-700 hover:bg-green-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Approve</button>
+                                                            <button onClick={() => handleManageVerificator(v._id, 'rejected')} className="bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Reject</button>
+                                                        </>
+                                                    )}
+                                                    {v.verificatorStatus === 'approved' && (
+                                                        <button onClick={() => handleManageVerificator(v._id, 'suspended')} className="bg-amber-100 text-amber-700 hover:bg-amber-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Suspend</button>
+                                                    )}
+                                                    {['suspended', 'rejected'].includes(v.verificatorStatus) && (
+                                                        <button onClick={() => handleManageVerificator(v._id, 'approved')} className="bg-neutral-100 text-neutral-700 hover:bg-neutral-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Re-Approve</button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div className="bg-white border border-neutral-200 rounded-[2.5rem] overflow-hidden shadow-sm">
+                        <div className="p-8 border-b border-neutral-100 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-xl font-black text-foreground">Verification Jobs History</h3>
+                                <p className="text-sm font-medium text-neutral-500 mt-1">Monitor all physical address verification jobs assigned to field agents.</p>
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-widest">
+                                        <th className="px-8 py-4">Target User</th>
+                                        <th className="px-8 py-4">Assigned Agent</th>
+                                        <th className="px-8 py-4">Status</th>
+                                        <th className="px-8 py-4 text-right">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-50">
+                                    {verifLoading ? (
+                                        <tr><td colSpan="4" className="px-8 py-20 text-center"><Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" /></td></tr>
+                                    ) : verifications.length === 0 ? (
+                                        <tr><td colSpan="4" className="px-8 py-10 text-center text-neutral-400 font-bold">No verification jobs found.</td></tr>
+                                    ) : (
+                                        verifications.map(job => (
+                                            <tr key={job._id} className="hover:bg-neutral-50/50">
+                                                <td className="px-8 py-5">
+                                                    <p className="font-bold text-foreground">{job.targetUser?.firstName} {job.targetUser?.lastName}</p>
+                                                    <p className="text-xs text-neutral-500">{job.targetUser?.homeAddress || 'No Address'}</p>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <p className="font-bold text-foreground">{job.verificator?.firstName} {job.verificator?.lastName}</p>
+                                                    <p className="text-xs text-neutral-500">{job.verificator?.email}</p>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${job.status === 'verified' ? 'bg-green-50 text-green-700' : ['declined_user', 'declined_job'].includes(job.status) ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>{job.status.replace('_', ' ')}</span>
+                                                </td>
+                                                <td className="px-8 py-5 text-right font-medium text-sm text-neutral-500">
+                                                    {new Date(job.assignedAt).toLocaleDateString()}
                                                 </td>
                                             </tr>
                                         ))

@@ -124,6 +124,10 @@ export default function DashboardLayout({ children }) {
                         { name: 'Transfers', href: '/dashboard/transfers', icon: ArrowLeftRight },
                         { name: 'Device History', href: '/dashboard/history', icon: History },
                         { name: 'Device Alerts', href: '/dashboard/alerts', icon: ShieldAlert },
+                        ...(user.isVerificator && user.verificatorStatus === 'approved' 
+                            ? [{ name: 'Verificator Portal', href: '/dashboard/verificator', icon: CheckCircle2 }] : []),
+                        ...( (user.role === 'basic' || user.role === 'technician') && user.isApproved && user.verificatorStatus !== 'approved'
+                            ? [{ name: 'Apply as Verificator', href: '/dashboard/verificator-apply', icon: ShieldAlert }] : [])
                     ].map((item) => {
                         const isActive = pathname === item.href;
                         return (

@@ -12,7 +12,7 @@ import {
 } from '../controllers/verificatorController.js';
 
 const verificator = (req, res, next) => {
-    if (req.user && (req.user.role === 'verificator' || req.user.role === 'admin')) {
+    if (req.user && ((req.user.isVerificator && req.user.verificatorStatus === 'approved') || req.user.role === 'admin' || req.user.role === 'verificator')) {
         return next();
     }
     return res.status(403).json({ message: 'Not authorized as a verificator' });

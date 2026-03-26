@@ -5,10 +5,13 @@ import Transfer from '../models/Transfer.js';
 import Device from '../models/Device.js';
 import Referral from '../models/Referral.js';
 import WithdrawalRequest from '../models/WithdrawalRequest.js';
+import VerificationJob from '../models/VerificationJob.js';
 import AdmZip from 'adm-zip';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
+import { cloudinary } from '../config/cloudinary.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -138,12 +141,7 @@ export const getAllUsers = async (req, res) => {
 // @access  Private/Admin
 export const getPendingApprovals = async (req, res) => {
     try {
-        const rawUsers = await User.find({ hasPaid: true, isApproved: false });
-        const users = rawUsers.map(u => {
-            const userObj = { ...u };
-            delete userObj.password;
-            return userObj;
-        });
+        const users = await User.find({ hasPaid: true, isApproved: false }).select('-password');
         res.json(users);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -284,31 +282,57 @@ export const confirmPayment = async (req, res) => {
     }
 };
 
-// @desc    Download System Backup (db.json and upload folder)
+// @desc    Download System Backup (all MongoDB collections + Cloudinary images)
 // @route   GET /api/admin/backup
 // @access  Private/Admin
 export const downloadBackup = async (req, res) => {
     try {
         const zip = new AdmZip();
-        
-        // Use path.resolve to get the root dir consistently since we are in controllers folder
-        const rootDir = path.resolve(__dirname, '..');
-        
-        // Add db.json
-        const dbPath = path.join(rootDir, 'db.json');
-        if (fs.existsSync(dbPath)) {
-            zip.addLocalFile(dbPath);
-        }
-        
-        // Add upload folder
-        const uploadDir = path.join(rootDir, 'upload');
-        if (fs.existsSync(uploadDir)) {
-            zip.addLocalFolder(uploadDir, 'upload');
-        }
-        
-        const zipBuffer = await zip.toBufferPromise();
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        
+
+        // ── 1. Dump every MongoDB collection ──────────────────────────────────
+        const db = mongoose.connection.db;
+        const collections = await db.listCollections().toArray();
+
+        for (const col of collections) {
+            const docs = await db.collection(col.name).find({}).toArray();
+            const jsonStr = JSON.stringify(docs, null, 2);
+            zip.addFile(`database/${col.name}.json`, Buffer.from(jsonStr, 'utf8'));
+        }
+
+        // ── 2. Fetch & bundle Cloudinary images ───────────────────────────────
+        let nextCursor = null;
+        let imageIndex = 0;
+        do {
+            const listOptions = { type: 'upload', prefix: 'traceit_uploads', max_results: 100 };
+            if (nextCursor) listOptions.next_cursor = nextCursor;
+
+            const result = await cloudinary.api.resources(listOptions);
+            nextCursor = result.next_cursor || null;
+
+            for (const resource of result.resources) {
+                try {
+                    const imgRes = await axios.get(resource.secure_url, { responseType: 'arraybuffer', timeout: 15000 });
+                    const ext = resource.format || 'jpg';
+                    const safeName = resource.public_id.replace(/[/\\:*?"<>|]/g, '_');
+                    zip.addFile(`images/${safeName}.${ext}`, Buffer.from(imgRes.data));
+                    imageIndex++;
+                } catch (imgErr) {
+                    console.warn(`Could not download image ${resource.public_id}:`, imgErr.message);
+                }
+            }
+        } while (nextCursor);
+
+        // ── 3. Add a manifest ─────────────────────────────────────────────────
+        const manifest = {
+            generatedAt: new Date().toISOString(),
+            collections: collections.map(c => c.name),
+            imageCount: imageIndex
+        };
+        zip.addFile('manifest.json', Buffer.from(JSON.stringify(manifest, null, 2), 'utf8'));
+
+        const zipBuffer = await zip.toBufferPromise();
+
         res.set('Content-Type', 'application/zip');
         res.set('Content-Disposition', `attachment; filename=traceit-backup-${timestamp}.zip`);
         res.send(zipBuffer);
@@ -404,3 +428,53 @@ export const searchUsers = async (req, res) => {
     }
 };
 
+// @desc    Get all verificator applications and active verificators
+// @route   GET /api/admin/verificators
+// @access  Private/Admin
+export const getVerificators = async (req, res) => {
+    try {
+        const verificators = await User.find({ verificatorStatus: { $ne: 'none' } })
+            .select('-password').sort({ updatedAt: -1 });
+        res.json(verificators);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Manage Verificator Status
+// @route   PUT /api/admin/verificators/:id/status
+// @access  Private/Admin
+export const manageVerificator = async (req, res) => {
+    try {
+        const { status } = req.body;
+        if (!['approved', 'suspended', 'rejected', 'none'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid status' });
+        }
+        
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        
+        user.verificatorStatus = status;
+        user.isVerificator = status === 'approved';
+        await user.save();
+        
+        res.json({ message: `Verificator status updated to ${status}`, user });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get all verification jobs for admin
+// @route   GET /api/admin/verificators/jobs
+// @access  Private/Admin
+export const getAdminVerifications = async (req, res) => {
+    try {
+        const jobs = await VerificationJob.find({})
+            .populate('verificator', 'firstName lastName email phoneNumber')
+            .populate('targetUser', 'firstName lastName email homeAddress phoneNumber')
+            .sort({ assignedAt: -1 });
+        res.json(jobs);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

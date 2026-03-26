@@ -54,6 +54,13 @@ export const verifyPayment = async (req, res) => {
         }
 
         if (type === 'nin_verification') {
+            // Before unlocking, check if this user's NIN is already claimed by another account
+            if (user.nin) {
+                const duplicateNIN = await User.findOne({ nin: user.nin, _id: { $ne: user._id } });
+                if (duplicateNIN) {
+                    return res.status(400).json({ message: 'An account already exists with this NIN. Please log in to that account instead.' });
+                }
+            }
             user.hasPaid = true;
             await user.save();
         }

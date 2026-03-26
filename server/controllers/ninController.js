@@ -17,6 +17,14 @@ export const verifyNIN = async (req, res) => {
             return res.status(400).json({ message: 'NIN is already verified for this account.' });
         }
 
+        // Check if this NIN number already belongs to a different account
+        if (ninNumber) {
+            const existingNINUser = await User.findOne({ nin: ninNumber, _id: { $ne: req.user._id } });
+            if (existingNINUser) {
+                return res.status(400).json({ message: 'An account already exists with this NIN number. If this is you, please log in instead.' });
+            }
+        }
+
         // According to user request:
         // EVERIFY DOCS link: https://everify.com.ng/dash/documentation.php
         // API KEY: 3e1a36c2e2e912c354e714da6637eb98b19572e5f693fb7a62403dd95d24d101

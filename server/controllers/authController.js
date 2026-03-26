@@ -45,7 +45,7 @@ export const registerUser = async (req, res) => {
         const userExists = await User.findOne({ email });
 
         if (userExists) {
-            return res.status(400).json({ message: 'User already exists' });
+            return res.status(400).json({ message: 'An account with this email address already exists. Please log in instead.' });
         }
 
         let imageUrl = null;
@@ -203,6 +203,41 @@ export const verifyUserEmail = async (req, res) => {
         } else {
             res.status(404).json({ message: 'Account with this email does not exist on the platform' });
         }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Apply to be a verificator
+// @route   POST /api/auth/apply-verificator
+// @access  Private (Basic/Technician only)
+export const applyVerificator = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        if (!['basic', 'technician'].includes(user.role)) {
+            return res.status(403).json({ message: 'Only Basic and Technician users can apply to be a Verificator' });
+        }
+
+        if (!user.isApproved) {
+            return res.status(400).json({ message: 'You must be a verified user to apply' });
+        }
+
+        if (user.verificatorStatus !== 'none' && user.verificatorStatus !== 'rejected') {
+            return res.status(400).json({ message: `Application is already ${user.verificatorStatus}` });
+        }
+
+        user.verificatorStatus = 'pending';
+        if (req.body.areaOfFocus) {
+            user.verificatorAreaOfFocus = req.body.areaOfFocus;
+        }
+        await user.save();
+
+        res.json({ message: 'Application submitted successfully', verificatorStatus: user.verificatorStatus });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

@@ -156,7 +156,7 @@ export const declineJob = async (req, res) => {
         }).distinct('verificator');
 
         const verificators = await User.find({
-            role: 'verificator',
+            $or: [{ role: 'verificator' }, { isVerificator: true, verificatorStatus: 'approved' }],
             _id: { $nin: [...previouslyAssigned, req.user._id] }
         });
 
