@@ -283,69 +283,71 @@ export const confirmPayment = async (req, res) => {
     }
 };
 
-// @desc    Download System Backup (all MongoDB collections + Cloudinary images)
-// @route   GET /api/admin/backup
+// @desc    Download System Backup (MongoDB + Cloudinary, selective)
+// @route   GET /api/admin/backup?type=mongodb|cloudinary|both
 // @access  Private/Admin
 export const downloadBackup = async (req, res) => {
     try {
+        const backupType = req.query.type || 'both'; // 'mongodb', 'cloudinary', or 'both'
         const zip = new AdmZip();
         const now = new Date();
-        const timestamp = now.toISOString().replace(/T/, '_').replace(/:/g, '-').slice(0, 19);
 
-        // ── 1. Dump every MongoDB collection ──────────────────────────────────
-        const db = mongoose.connection.db;
-        const collections = await db.listCollections().toArray();
+        // Build human-readable timestamp: 2026-03-27_00-47-52
+        const pad = n => String(n).padStart(2, '0');
+        const timestamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
 
-        for (const col of collections) {
-            const docs = await db.collection(col.name).find({}).toArray();
-            const jsonStr = JSON.stringify(docs, null, 2);
-            zip.addFile(`database/${col.name}.json`, Buffer.from(jsonStr, 'utf8'));
+        const manifest = { generatedAt: now.toISOString(), type: backupType };
+
+        // ── 1. MongoDB dump ────────────────────────────────────────────────────
+        if (backupType === 'mongodb' || backupType === 'both') {
+            const db = mongoose.connection.db;
+            const collections = await db.listCollections().toArray();
+            for (const col of collections) {
+                const docs = await db.collection(col.name).find({}).toArray();
+                zip.addFile(`database/${col.name}.json`, Buffer.from(JSON.stringify(docs, null, 2), 'utf8'));
+            }
+            manifest.collections = collections.map(c => c.name);
         }
 
-        // ── 2. Fetch & bundle Cloudinary images ───────────────────────────────
-        let nextCursor = undefined;
-        let imageIndex = 0;
-        do {
-            const listOptions = {
-                resource_type: 'image',
-                type: 'upload',
-                max_results: 100,
-                ...(nextCursor ? { next_cursor: nextCursor } : {})
-            };
+        // ── 2. Cloudinary images (traceit_uploads ONLY) ────────────────────────
+        if (backupType === 'cloudinary' || backupType === 'both') {
+            let nextCursor = undefined;
+            let imageIndex = 0;
+            do {
+                const result = await cloudinary.api.resources({
+                    resource_type: 'image',
+                    type: 'upload',
+                    prefix: 'traceit_uploads',   // Only TraceIt project images
+                    max_results: 100,
+                    ...(nextCursor ? { next_cursor: nextCursor } : {})
+                });
+                nextCursor = result.next_cursor || undefined;
 
-            const result = await cloudinary.api.resources(listOptions);
-            nextCursor = result.next_cursor || undefined;
-
-            for (const resource of result.resources) {
-                let downloaded = false;
-                for (let attempt = 1; attempt <= 2; attempt++) {
-                    try {
-                        const imgRes = await axios.get(resource.secure_url, { responseType: 'arraybuffer', timeout: 45000 });
-                        const ext = resource.format || 'jpg';
-                        const safeName = resource.public_id.replace(/[/\\:*?"<>|]/g, '_');
-                        zip.addFile(`images/${safeName}.${ext}`, Buffer.from(imgRes.data));
-                        imageIndex++;
-                        downloaded = true;
-                        break;
-                    } catch (imgErr) {
-                        if (attempt === 2) {
-                            console.warn(`Skipped image after ${attempt} attempts — ${resource.public_id}: ${imgErr.message}`);
+                for (const resource of result.resources) {
+                    for (let attempt = 1; attempt <= 2; attempt++) {
+                        try {
+                            const imgRes = await axios.get(resource.secure_url, { responseType: 'arraybuffer', timeout: 45000 });
+                            const ext = resource.format || 'jpg';
+                            const safeName = resource.public_id.replace(/[/\\:*?"<>|]/g, '_');
+                            zip.addFile(`images/${safeName}.${ext}`, Buffer.from(imgRes.data));
+                            imageIndex++;
+                            break;
+                        } catch (imgErr) {
+                            if (attempt === 2) {
+                                console.warn(`Skipped (${resource.public_id}): ${imgErr.message}`);
+                            }
                         }
                     }
                 }
-            }
-        } while (nextCursor);
+            } while (nextCursor);
+            manifest.imageCount = imageIndex;
+        }
 
-        // ── 3. Add a manifest ─────────────────────────────────────────────────
-        const manifest = {
-            generatedAt: now.toISOString(),
-            collections: collections.map(c => c.name),
-            imageCount: imageIndex
-        };
+        // ── 3. Manifest ────────────────────────────────────────────────────────
         zip.addFile('manifest.json', Buffer.from(JSON.stringify(manifest, null, 2), 'utf8'));
 
         const zipBuffer = await zip.toBufferPromise();
-        const filename = `traceit-backup-${timestamp}.zip`;
+        const filename = `traceit-${backupType}-backup-${timestamp}.zip`;
 
         res.set('Content-Type', 'application/zip');
         res.set('Content-Disposition', `attachment; filename="${filename}"`);

@@ -55,6 +55,7 @@ export default function AdminDashboard() {
     const [processLoading, setProcessLoading] = useState(null);
     const [message, setMessage] = useState({ type: '', text: '' });
     const [backupLoading, setBackupLoading] = useState(false);
+    const [showBackupDropdown, setShowBackupDropdown] = useState(false);
     const [activeTab, setActiveTab] = useState('overview'); // overview, approvals, accounts, logs, reports, ads, verificators
     const [verificators, setVerificators] = useState([]);
     const [verifications, setVerifications] = useState([]);
@@ -173,23 +174,34 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleDownloadBackup = async () => {
+    const handleDownloadBackup = async (type = 'both') => {
         setBackupLoading(true);
+        setShowBackupDropdown(false);
         try {
-            const response = await fetch(`${API_URL}/admin/backup`, {
+            const response = await fetch(`${API_URL}/admin/backup?type=${type}`, {
                 headers: { Authorization: `Bearer ${user.token}` }
             });
             if (!response.ok) throw new Error('Backup failed');
+            
+            // Get filename from header if possible, else generate one
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = `traceit-${type}-backup-${new Date().toISOString().replace(/T/, '_').replace(/:/g, '-').slice(0, 19)}.zip`;
+            
+            if (contentDisposition && contentDisposition.includes('filename=')) {
+                const match = contentDisposition.match(/filename="?([^";]+)"?/);
+                if (match && match[1]) filename = match[1];
+            }
+
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `traceit-backup-${new Date().toISOString().slice(0,10)}.zip`;
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
             a.remove();
             window.URL.revokeObjectURL(url);
-            setMessage({ type: 'success', text: 'Backup downloaded successfully!' });
+            setMessage({ type: 'success', text: `${type.toUpperCase()} Backup started!` });
         } catch (error) {
             setMessage({ type: 'error', text: 'Backup failed: ' + (error.message || 'Unknown error') });
         } finally {
@@ -677,15 +689,59 @@ export default function AdminDashboard() {
                                         <option value="admin">Admins</option>
                                     </select>
                                 </div>
-                                <button
-                                    onClick={handleDownloadBackup}
-                                    disabled={backupLoading}
-                                    title="Download full database + image backup"
-                                    className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-xl text-sm font-black hover:bg-black transition-all shadow-md disabled:opacity-50"
-                                >
-                                    {backupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                                    {backupLoading ? 'Backing up...' : 'Backup'}
-                                </button>
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setShowBackupDropdown(!showBackupDropdown)}
+                                        disabled={backupLoading}
+                                        title="Download database or image backup"
+                                        className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-xl text-sm font-black hover:bg-black transition-all shadow-md disabled:opacity-50"
+                                    >
+                                        {backupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                        {backupLoading ? 'Backing up...' : 'Backup System'}
+                                    </button>
+
+                                    {showBackupDropdown && (
+                                        <div className="absolute right-0 mt-2 w-56 bg-white border border-neutral-200 rounded-2xl shadow-2xl z-50 py-2 animate-in fade-in zoom-in-95 duration-200">
+                                            <button 
+                                                onClick={() => handleDownloadBackup('mongodb')}
+                                                className="w-full px-4 py-2.5 text-left text-xs font-bold hover:bg-neutral-50 flex items-center gap-3"
+                                            >
+                                                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                                                    <BarChart2 className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-foreground">Database Only</p>
+                                                    <p className="text-[10px] text-neutral-400 font-medium">MongoDB Collections</p>
+                                                </div>
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDownloadBackup('cloudinary')}
+                                                className="w-full px-4 py-2.5 text-left text-xs font-bold hover:bg-neutral-50 flex items-center gap-3"
+                                            >
+                                                <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
+                                                    <ImageIcon className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-foreground">Images Only</p>
+                                                    <p className="text-[10px] text-neutral-400 font-medium">Cloudinary Gallery</p>
+                                                </div>
+                                            </button>
+                                            <div className="my-1 border-t border-neutral-100"></div>
+                                            <button 
+                                                onClick={() => handleDownloadBackup('both')}
+                                                className="w-full px-4 py-2.5 text-left text-xs font-bold hover:bg-neutral-100 flex items-center gap-3 bg-neutral-50/50"
+                                            >
+                                                <div className="w-8 h-8 rounded-lg bg-neutral-900 text-white flex items-center justify-center">
+                                                    <ShieldCheck className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-foreground">Full Backup</p>
+                                                    <p className="text-[10px] text-neutral-400 font-medium">Database + Images</p>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
