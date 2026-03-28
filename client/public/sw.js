@@ -9,6 +9,16 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-    // We just pass through all requests for basic installation capability
-    event.respondWith(fetch(event.request));
+    // Let API requests bypass the service worker entirely
+    // This prevents noisy 'Uncaught in promise' errors when the backend is sleeping/starting up
+    if (event.request.url.includes('/api/')) {
+        return;
+    }
+
+    event.respondWith(
+        fetch(event.request).catch((err) => {
+            console.warn('SW Fetch Error:', err);
+            throw err;
+        })
+    );
 });
