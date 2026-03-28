@@ -30,7 +30,20 @@ export const trackSession = async (req, res) => {
                 lastActive:       new Date(),
                 sessionStart:     new Date()
             });
-        } else {
+            try {
+                await session.save();
+                return res.json({ ok: true });
+            } catch (err) {
+                // E11000 means another concurrent request created the session a microsecond ago
+                if (err.code === 11000) {
+                    session = await Analytics.findOne({ sessionId });
+                } else {
+                    throw err;
+                }
+            }
+        } 
+        
+        if (session) {
             // Track new pages (avoid consecutive duplicates)
             if (page && session.pagesVisited[session.pagesVisited.length - 1] !== page) {
                 session.pagesVisited.push(page);
@@ -44,9 +57,10 @@ export const trackSession = async (req, res) => {
             session.lastActive = new Date();
             // Upgrade guest to identified user when they log in mid-session
             if (userId && !session.userId) session.userId = userId;
-        }
 
-        await session.save();
+            await session.save();
+        }
+        
         res.json({ ok: true });
     } catch (error) {
         console.error('[Analytics Track Error]', error.message);
