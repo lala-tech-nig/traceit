@@ -46,7 +46,9 @@ export default function DashboardLayout({ children }) {
                 })
                 .catch(console.log);
         }
+    }, [user, loading, router, API_URL]);
 
+    useEffect(() => {
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').catch(console.error);
         }
@@ -62,7 +64,7 @@ export default function DashboardLayout({ children }) {
         return () => {
             window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         };
-    }, [user, loading, router, API_URL]);
+    }, []);
 
     const textSliderAds = layoutAds.filter(a => a.type === 'text_slider');
     const popupModalAd = layoutAds.find(a => a.type === 'popup_modal');
