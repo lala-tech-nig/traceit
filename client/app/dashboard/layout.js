@@ -21,6 +21,10 @@ export default function DashboardLayout({ children }) {
     const [paymentLoading, setPaymentLoading] = useState(false);
     const [layoutAds, setLayoutAds] = useState([]);
     const [showPopup, setShowPopup] = useState(false);
+    
+    // PWA Install State
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
     useEffect(() => {
         if (!loading && !user) {
@@ -42,6 +46,22 @@ export default function DashboardLayout({ children }) {
                 })
                 .catch(console.log);
         }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(console.error);
+        }
+
+        const handleBeforeInstallPrompt = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+            setShowInstallPrompt(true);
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        };
     }, [user, loading, router, API_URL]);
 
     const textSliderAds = layoutAds.filter(a => a.type === 'text_slider');
@@ -265,8 +285,10 @@ export default function DashboardLayout({ children }) {
                     </Link>
                     <div className="flex items-center gap-2">
                         {user.role === 'basic' && user.isApproved && user.verificatorStatus !== 'approved' && (
-                            <Link href="/dashboard/verificator-apply" className="bg-primary/10 text-primary p-2 rounded-xl flex items-center justify-center transition-colors">
-                                <ShieldAlert className="w-5 h-5" />
+                            <Link href="/dashboard/verificator-apply" className="bg-primary/10 text-primary px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors whitespace-nowrap">
+                                <ShieldAlert className="w-4 h-4" />
+                                <span className="text-[10px] font-black uppercase tracking-widest hidden xs:inline-block">Become a Verificator</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest xs:hidden">Apply</span>
                             </Link>
                         )}
                         <button onClick={logout} className="text-red-600 bg-red-50 hover:bg-red-100 transition-colors p-2 rounded-xl">
@@ -388,6 +410,35 @@ export default function DashboardLayout({ children }) {
                             </a>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* PWA Install Banner */}
+            {showInstallPrompt && deferredPrompt && (
+                <div className="fixed bottom-24 right-4 md:right-8 z-[150] bg-white border border-neutral-200 p-4 rounded-2xl shadow-xl flex items-center gap-4 animate-in slide-in-from-bottom-8">
+                    <img src="/logo.png" className="w-10 h-10 object-contain" alt="App Logo" />
+                    <div>
+                        <p className="font-black text-sm text-foreground">Install TraceIt</p>
+                        <p className="text-xs font-medium text-neutral-500">Add the app to your home screen.</p>
+                    </div>
+                    <button 
+                        onClick={async () => {
+                            if (!deferredPrompt) return;
+                            deferredPrompt.prompt();
+                            const { outcome } = await deferredPrompt.userChoice;
+                            if (outcome === 'accepted') setShowInstallPrompt(false);
+                            setDeferredPrompt(null);
+                        }}
+                        className="bg-primary hover:bg-primary-dark transition-colors px-4 py-2 rounded-xl text-white font-bold text-xs shadow-md shadow-primary/20"
+                    >
+                        Install
+                    </button>
+                    <button 
+                        onClick={() => setShowInstallPrompt(false)} 
+                        className="absolute -top-2 -right-2 bg-neutral-100 text-neutral-500 hover:text-red-500 hover:bg-red-50 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold border border-neutral-200"
+                    >
+                        ✕
+                    </button>
                 </div>
             )}
         </div>

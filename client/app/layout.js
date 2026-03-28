@@ -17,6 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "TraceIt - Gadget Ownership Tracking Platform",
   description: "Eradicating gadget thefts in Africa by helping buyers safely purchase devices without fear.",
+  manifest: "/manifest.json"
 };
 
 export default function RootLayout({ children }) {
