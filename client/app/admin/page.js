@@ -60,6 +60,10 @@ export default function AdminDashboard() {
     const [verificators, setVerificators] = useState([]);
     const [verifications, setVerifications] = useState([]);
     const [verifLoading, setVerifLoading] = useState(false);
+
+    // Withdrawals
+    const [withdrawals, setWithdrawals] = useState([]);
+    const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
     
     // Ads and Reports State
     const [adsLoading, setAdsLoading] = useState(false);
@@ -315,7 +319,38 @@ export default function AdminDashboard() {
         if (activeTab === 'ads' && user) fetchAds();
         if (activeTab === 'analytics' && user) fetchAnalytics();
         if (activeTab === 'verificators' && user) fetchVerificators();
+        if (activeTab === 'withdrawals' && user) fetchWithdrawals();
     }, [activeTab, sortConfig, filterRole, filterStatus]);
+
+    const fetchWithdrawals = async () => {
+        setWithdrawalsLoading(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            const res = await axios.get(`${API_URL}/admin/withdrawals`, config);
+            setWithdrawals(res.data);
+        } catch (error) {
+            console.error("Failed to fetch withdrawals", error);
+        } finally {
+            setWithdrawalsLoading(false);
+        }
+    };
+
+    const handleProcessWithdrawal = async (id, status) => {
+        const note = status === 'rejected' ? window.prompt("Enter reason for rejection (optional):") : '';
+        if (status === 'rejected' && note === null) return; // cancelled
+
+        setProcessLoading(id);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.put(`${API_URL}/admin/withdrawals/${id}`, { status, adminNote: note }, config);
+            setMessage({ type: 'success', text: `Withdrawal request ${status} successfully!` });
+            fetchWithdrawals();
+        } catch (error) {
+            setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to process withdrawal' });
+        } finally {
+            setProcessLoading(null);
+        }
+    };
 
     const fetchAnalytics = async (month, sortBy) => {
         setAnalyticsLoading(true);
@@ -455,6 +490,7 @@ export default function AdminDashboard() {
         { id: 'approvals',  label: `Approvals (${pendingUsers.length})`, icon: Clock },
         { id: 'reports',    label: 'Device Reports',        icon: ShieldAlert },
         { id: 'verificators',label: 'Field Agents / Verificators', icon: CheckCircle },
+        { id: 'withdrawals',label: 'Withdrawal Requests',   icon: ArrowLeftRight },
         { id: 'ads',        label: 'Broadcast Ads',         icon: Radio },
         { id: 'logs',       label: 'Activity Logs',         icon: SearchCode },
         { id: 'analytics',  label: 'Platform Analytics',    icon: BarChart2 },
@@ -528,10 +564,10 @@ export default function AdminDashboard() {
                             <Download className="w-3.5 h-3.5" /> Backup
                         </button>
                         <button 
-                            onClick={() => activeTab === 'accounts' ? fetchAllUsers() : activeTab === 'analytics' ? fetchAnalytics() : activeTab === 'verificators' ? fetchVerificators() : fetchData()}
+                            onClick={() => activeTab === 'accounts' ? fetchAllUsers() : activeTab === 'analytics' ? fetchAnalytics() : activeTab === 'verificators' ? fetchVerificators() : activeTab === 'withdrawals' ? fetchWithdrawals() : fetchData()}
                             className="flex items-center gap-2 px-4 py-2 bg-white border border-neutral-200 rounded-xl font-bold hover:bg-neutral-50 transition-all text-xs"
                         >
-                            <RefreshCw className={`w-3.5 h-3.5 ${loading||usersLoading||analyticsLoading||verifLoading ? 'animate-spin' : ''}`} /> Refresh
+                            <RefreshCw className={`w-3.5 h-3.5 ${loading||usersLoading||analyticsLoading||verifLoading||withdrawalsLoading ? 'animate-spin' : ''}`} /> Refresh
                         </button>
                     </div>
                 </header>
@@ -1008,6 +1044,92 @@ export default function AdminDashboard() {
                                                 </td>
                                                 <td className="px-8 py-5 text-right font-medium text-sm text-neutral-500">
                                                     {new Date(job.assignedAt).toLocaleDateString()}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'withdrawals' && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="bg-white border border-neutral-200 rounded-[2.5rem] overflow-hidden shadow-sm">
+                        <div className="p-8 border-b border-neutral-100">
+                            <h3 className="text-xl font-black text-foreground">Withdrawal Requests</h3>
+                            <p className="text-sm font-medium text-neutral-500 mt-1">Review and process user earning withdrawal requests.</p>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-widest border-b border-neutral-100">
+                                        <th className="px-8 py-4">User</th>
+                                        <th className="px-8 py-4">Amount</th>
+                                        <th className="px-8 py-4">Bank Details</th>
+                                        <th className="px-8 py-4">Date & Status</th>
+                                        <th className="px-8 py-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-50">
+                                    {withdrawalsLoading ? (
+                                        <tr><td colSpan="5" className="px-8 py-20 text-center"><Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" /></td></tr>
+                                    ) : withdrawals.length === 0 ? (
+                                        <tr><td colSpan="5" className="px-8 py-20 text-center text-neutral-400 font-bold">No withdrawal requests found.</td></tr>
+                                    ) : (
+                                        withdrawals.map(req => (
+                                            <tr key={req._id} className="hover:bg-neutral-50/50">
+                                                <td className="px-8 py-5">
+                                                    <p className="font-bold text-foreground text-sm">{req.user?.firstName} {req.user?.lastName}</p>
+                                                    <p className="text-xs text-neutral-500">{req.user?.email}</p>
+                                                    <p className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider mt-0.5">{req.user?.phoneNumber}</p>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <p className="font-black text-foreground text-lg">₦{req.amount?.toLocaleString()}</p>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <p className="text-sm font-bold text-foreground">{req.bankName}</p>
+                                                    <p className="text-xs font-mono text-neutral-600 mt-0.5">{req.accountNumber}</p>
+                                                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mt-1">{req.accountName}</p>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <p className="text-xs font-medium text-neutral-600 mb-2">{new Date(req.createdAt).toLocaleDateString()}</p>
+                                                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                                                        req.status === 'approved' ? 'bg-green-50 text-green-600' :
+                                                        req.status === 'rejected' ? 'bg-red-50 text-red-600' :
+                                                        'bg-amber-50 text-amber-600'
+                                                    }`}>
+                                                        {req.status}
+                                                    </span>
+                                                    {req.adminNote && (
+                                                        <p className="text-[10px] font-medium text-neutral-400 mt-2 max-w-[150px] truncate" title={req.adminNote}>
+                                                            Note: {req.adminNote}
+                                                        </p>
+                                                    )}
+                                                </td>
+                                                <td className="px-8 py-5 text-right whitespace-nowrap">
+                                                    {req.status === 'pending' ? (
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button 
+                                                                disabled={processLoading === req._id}
+                                                                onClick={() => handleProcessWithdrawal(req._id, 'approved')}
+                                                                className="bg-green-100 text-green-700 hover:bg-green-200 px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                                                            >
+                                                                {processLoading === req._id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve'}
+                                                            </button>
+                                                            <button 
+                                                                disabled={processLoading === req._id}
+                                                                onClick={() => handleProcessWithdrawal(req._id, 'rejected')}
+                                                                className="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                                                            >
+                                                                Reject
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs font-bold text-neutral-300">Processed</span>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))

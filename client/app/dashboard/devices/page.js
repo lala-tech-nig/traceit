@@ -91,6 +91,9 @@ export default function DevicesPage() {
     const [manageForm, setManageForm] = useState({ status: '', comment: '' });
     const [manageLoading, setManageLoading] = useState(false);
 
+    // Search state
+    const [searchQuery, setSearchQuery] = useState("");
+
     // Form state
     const [selectedCategory, setSelectedCategory] = useState("");
     const [formData, setFormData] = useState({
@@ -231,6 +234,13 @@ export default function DevicesPage() {
         return config.icon;
     };
 
+    const filteredDevices = devices.filter(d => 
+        (d.name || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+        (d.brand || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+        (d.model || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (d.serialNumber || "").toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     return (
         <div className="max-w-6xl mx-auto space-y-8 pb-20">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -238,6 +248,17 @@ export default function DevicesPage() {
                     <h1 className="text-3xl font-extrabold text-foreground mb-2">My Devices</h1>
                     <p className="text-neutral-500 font-medium">Manage and track your registered gadgets.</p>
                 </div>
+                {!loading && devices.length > 0 && (
+                    <div className="flex-1 max-w-sm mb-0 sm:ml-auto">
+                        <input
+                            type="text"
+                            placeholder="Search devices..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full px-5 py-3 bg-white border border-neutral-200 rounded-2xl font-medium focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all shadow-sm"
+                        />
+                    </div>
+                )}
                 <button
                     onClick={() => {
                         setShowAddForm(!showAddForm);
@@ -420,9 +441,13 @@ export default function DevicesPage() {
                         Register your first device
                     </button>
                 </div>
+            ) : filteredDevices.length === 0 && searchQuery ? (
+                <div className="text-center py-20 bg-white border border-neutral-100 rounded-[3rem] shadow-sm">
+                    <p className="text-neutral-500 font-bold">No devices match your search '{searchQuery}'.</p>
+                </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {devices.map(device => (
+                    {filteredDevices.map(device => (
                         <div key={device._id} className="bg-white border border-neutral-200 rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all group flex flex-col">
                             <div className="h-44 bg-neutral-50 flex items-center justify-center relative border-b border-neutral-100 overflow-hidden">
                                 {device.deviceImage ? (

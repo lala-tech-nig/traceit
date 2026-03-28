@@ -264,7 +264,7 @@ export default function DashboardPage() {
                 amount: Number(withdrawForm.amount),
                 bankName: withdrawForm.bankName,
                 accountNumber: withdrawForm.accountNumber,
-                accountName: withdrawForm.accountName
+                accountName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
             }, config);
             setWithdrawMsg({ type: 'success', text: res.data.message });
             setWithdrawForm({ amount: '', bankName: '', accountNumber: '', accountName: '' });
@@ -1092,14 +1092,12 @@ export default function DashboardPage() {
                                                 <div className="space-y-1.5">
                                                     <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1">Account Name</label>
                                                     <input
-                                                        required
                                                         type="text"
-                                                        value={withdrawForm.accountName}
-                                                        onChange={(e) => setWithdrawForm({ ...withdrawForm, accountName: e.target.value })}
-                                                        placeholder={`${user?.firstName} ${user?.lastName}`}
-                                                        className="w-full px-5 py-3.5 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-foreground focus:bg-white focus:border-primary outline-none transition-all text-sm"
+                                                        readOnly
+                                                        value={`${user?.firstName || ''} ${user?.lastName || ''}`.trim()}
+                                                        className="w-full px-5 py-3.5 bg-neutral-100 border border-neutral-200 rounded-xl font-bold text-neutral-500 outline-none cursor-not-allowed text-sm"
                                                     />
-                                                    <p className="text-[10px] text-amber-600 font-bold ml-1">Must match profile: {user?.firstName} {user?.lastName}</p>
+                                                    <p className="text-[10px] text-green-600 font-bold ml-1">Fetched securely from your verified profile.</p>
                                                 </div>
                                             </div>
 
@@ -1111,7 +1109,7 @@ export default function DashboardPage() {
                                                     Back
                                                 </button>
                                                 <button
-                                                    disabled={!withdrawForm.bankName || withdrawForm.accountNumber.length < 10 || !withdrawForm.accountName}
+                                                    disabled={!withdrawForm.bankName || withdrawForm.accountNumber.length < 10}
                                                     onClick={() => setWithdrawStep(3)}
                                                     className="flex-[2] bg-primary text-white font-black py-4 rounded-xl hover:bg-primary-dark transition-all shadow-lg shadow-primary/20"
                                                 >
@@ -1147,7 +1145,7 @@ export default function DashboardPage() {
                                                     <span className="text-xs font-bold text-neutral-400 uppercase">Account</span>
                                                     <div className="text-right">
                                                         <p className="font-bold text-foreground leading-none">{withdrawForm.accountNumber}</p>
-                                                        <p className="text-[10px] font-medium text-neutral-500 mt-1">{withdrawForm.accountName}</p>
+                                                        <p className="text-[10px] font-medium text-neutral-500 mt-1">{`${user?.firstName || ''} ${user?.lastName || ''}`.trim()}</p>
                                                     </div>
                                                 </div>
                                             </div>

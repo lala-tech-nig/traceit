@@ -122,6 +122,7 @@ export default function DashboardLayout({ children }) {
                         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
                         { name: 'My Devices', href: '/dashboard/devices', icon: Smartphone },
                         { name: 'Transfers', href: '/dashboard/transfers', icon: ArrowLeftRight },
+                        { name: 'Transactions', href: '/dashboard/transactions', icon: CreditCard },
                         { name: 'Device History', href: '/dashboard/history', icon: History },
                         { name: 'Device Alerts', href: '/dashboard/alerts', icon: ShieldAlert },
                         ...(user.isVerificator && user.verificatorStatus === 'approved' 
@@ -262,9 +263,16 @@ export default function DashboardLayout({ children }) {
                         <img src="/logo.png" alt="TraceIt Logo" className="w-8 h-8 object-contain" />
                         <span className="text-lg font-bold tracking-tight">TraceIt</span>
                     </Link>
-                    <button onClick={logout} className="text-red-600 p-2">
-                        <LogOut className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {user.role === 'basic' && user.isApproved && user.verificatorStatus !== 'approved' && (
+                            <Link href="/dashboard/verificator-apply" className="bg-primary/10 text-primary p-2 rounded-xl flex items-center justify-center transition-colors">
+                                <ShieldAlert className="w-5 h-5" />
+                            </Link>
+                        )}
+                        <button onClick={logout} className="text-red-600 bg-red-50 hover:bg-red-100 transition-colors p-2 rounded-xl">
+                            <LogOut className="w-5 h-5" />
+                        </button>
+                    </div>
                 </header>
 
                 {textSliderAds.length > 0 && (
@@ -310,6 +318,7 @@ export default function DashboardLayout({ children }) {
                         { name: 'Home', href: '/dashboard', icon: LayoutDashboard },
                         { name: 'Devices', href: '/dashboard/devices', icon: Smartphone },
                         { name: 'Transfers', href: '/dashboard/transfers', icon: ArrowLeftRight },
+                        { name: 'Txnx', href: '/dashboard/transactions', icon: CreditCard },
                         { name: 'History', href: '/dashboard/history', icon: History }
                     ].map((tab) => {
                         const isActive = pathname === tab.href;
