@@ -342,97 +342,6 @@ export default function DashboardPage() {
                 )}
             </div>
 
-            {/* ── REFERRAL EARNINGS BANNER ── */}
-            {referralEarnings && (
-                <div className="bg-gradient-to-br from-primary to-primary-dark text-white rounded-[2.5rem] p-6 md:p-8 shadow-lg shadow-primary/20 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-16 -mt-16" />
-                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-10 -mb-10" />
-                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-2">
-                                <TrendingUp className="w-5 h-5 opacity-80" />
-                                <p className="text-sm font-bold uppercase tracking-widest opacity-80">Referral & Reward Earnings</p>
-                            </div>
-                            <div className="flex items-end gap-6">
-                                <div>
-                                    <p className="text-xs font-bold opacity-60 uppercase tracking-wider mb-1">Available Balance</p>
-                                    <p className="text-4xl font-black">₦{(referralEarnings.availableBalance || 0).toLocaleString()}</p>
-                                </div>
-                                <div className="pb-1 space-y-0.5">
-                                    <p className="text-xs font-semibold opacity-60">Referral Credits: ₦{referralEarnings.referralEarnings}</p>
-                                    <p className="text-xs font-semibold opacity-60">Reward Points: {referralEarnings.rewardPoints} pts (₦{referralEarnings.rewardPointsValue})</p>
-                                    {referralEarnings.pendingEarnings > 0 && (
-                                        <p className="text-xs font-semibold opacity-60">Pending: ₦{referralEarnings.pendingEarnings} (awaiting verifications)</p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-3">
-                            <button
-                                onClick={() => setShowReferralPanel(!showReferralPanel)}
-                                className="bg-white/20 hover:bg-white/30 text-white font-bold px-5 py-3 rounded-2xl transition-all flex items-center gap-2 text-sm"
-                            >
-                                <Users className="w-4 h-4" />
-                                My Referrals ({referralEarnings.totalCreditedReferrals + referralEarnings.totalPendingReferrals})
-                            </button>
-                            <button
-                                onClick={() => { setShowWithdrawModal(true); setWithdrawStep(1); }}
-                                className="bg-white text-primary font-bold px-5 py-3 rounded-2xl hover:bg-neutral-50 transition-all flex items-center gap-2 text-sm shadow-lg"
-                            >
-                                <Banknote className="w-4 h-4" />
-                                Withdraw Earnings
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Referral link hint */}
-                    <div className="relative z-10 mt-4 pt-4 border-t border-white/20 flex items-center gap-2">
-                        <p className="text-xs opacity-70">Your referral: Share your registered email with anyone joining TraceIt to earn ₦100 per verified user.</p>
-                    </div>
-                </div>
-            )}
-
-            {/* ── MY REFERRALS PANEL ── */}
-            {showReferralPanel && (
-                <div className="bg-white border border-neutral-200 rounded-[2.5rem] p-6 md:p-8 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xl font-black text-foreground flex items-center gap-2">
-                            <Users className="w-5 h-5 text-primary" /> Users I Referred
-                        </h3>
-                        <button onClick={() => setShowReferralPanel(false)} className="w-8 h-8 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400 hover:text-foreground transition-all">
-                            <X className="w-4 h-4" />
-                        </button>
-                    </div>
-                    {myReferrals.length === 0 ? (
-                        <div className="text-center py-10 text-neutral-400">
-                            <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                            <p className="font-bold">No referrals yet</p>
-                            <p className="text-sm mt-1">Share your email with friends to earn ₦100 per verified user.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {myReferrals.map((r) => (
-                                <div key={r._id} className="flex items-center justify-between p-4 bg-neutral-50 rounded-2xl border border-neutral-100 hover:border-primary/20 transition-all">
-                                    <div>
-                                        <p className="font-bold text-foreground">{r.referred?.firstName} {r.referred?.lastName}</p>
-                                        <p className="text-xs text-neutral-500 font-medium">{r.referred?.email}</p>
-                                        <p className="text-xs text-neutral-400 mt-0.5">Joined {new Date(r.createdAt).toLocaleDateString()}</p>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-1">
-                                        <span className={`text-xs font-black px-3 py-1 rounded-full ${r.status === 'credited' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                                            {r.status === 'credited' ? `+₦${r.commissionAmount}` : 'Pending'}
-                                        </span>
-                                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${r.referred?.isApproved ? 'bg-green-50 text-green-600' : 'bg-neutral-100 text-neutral-500'}`}>
-                                            {r.referred?.isApproved ? 'Verified' : 'Unverified'}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
             {/* Global Search Section */}
             <div className="bg-white border border-neutral-200 p-8 rounded-[3rem] shadow-sm relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
@@ -576,6 +485,32 @@ export default function DashboardPage() {
                 </div>
             </div>
 
+            {/* Ad Carousel */}
+            {bannerAds.length > 0 && (
+                <div onClick={() => window.open(bannerAds[currentAdIdx].actionUrl, '_blank')} className="relative bg-neutral-100 rounded-[2.5rem] border border-neutral-100 shadow-sm overflow-hidden aspect-[21/9] md:aspect-[32/9] flex items-center group cursor-pointer transition-all hover:shadow-lg animate-in fade-in zoom-in-95 duration-700 w-full max-h-[300px]">
+                    {bannerAds[currentAdIdx].mediaUrl ? (
+                        <div className="absolute inset-0 bg-contain bg-no-repeat bg-center transition-transform duration-[10s] ease-out" style={{ backgroundImage: `url(${bannerAds[currentAdIdx].mediaUrl})` }}></div>
+                    ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary-dark flex flex-col items-center justify-center p-8 text-white text-center">
+                            <h3 className="text-3xl font-black mb-2">{bannerAds[currentAdIdx].title}</h3>
+                            <p className="text-sm font-medium opacity-90 max-w-lg">{bannerAds[currentAdIdx].description}</p>
+                        </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
+                        <span className="bg-white text-primary font-black px-8 py-4 rounded-full shadow-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 flex items-center gap-2">
+                            {bannerAds[currentAdIdx].actionType === 'whatsapp' ? 'Connect on WhatsApp' : 'Visit Link'} <ChevronRight className="w-5 h-5" />
+                        </span>
+                    </div>
+                    {bannerAds.length > 1 && (
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
+                            {bannerAds.map((_, i) => (
+                                <div key={i} onClick={(e) => { e.stopPropagation(); setCurrentAdIdx(i); }} className={`w-2 h-2 rounded-full transition-all cursor-pointer shadow-sm ${i === currentAdIdx ? 'bg-white w-8' : 'bg-white/50 hover:bg-white/90'}`} />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Notification for Pending Approval */}
             {user?.hasPaid && !user?.isApproved && (
                 <div className="bg-primary/5 border border-primary/20 p-6 rounded-[2rem] flex items-start gap-4 animate-in slide-in-from-top-4">
@@ -586,6 +521,97 @@ export default function DashboardPage() {
                         <h4 className="text-lg font-black text-foreground">Verification in Progress</h4>
                         <p className="text-neutral-600 font-medium">Your NIN and payment have been received. A field verificator will visit your address and an admin is reviewing your details. This usually takes less than 24 hours.</p>
                     </div>
+                </div>
+            )}
+
+            {/* ── REFERRAL EARNINGS BANNER ── */}
+            {referralEarnings && (
+                <div className="bg-gradient-to-br from-primary to-primary-dark text-white rounded-[2.5rem] p-6 md:p-8 shadow-lg shadow-primary/20 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-16 -mt-16" />
+                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-10 -mb-10" />
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2">
+                                <TrendingUp className="w-5 h-5 opacity-80" />
+                                <p className="text-sm font-bold uppercase tracking-widest opacity-80">Referral & Reward Earnings</p>
+                            </div>
+                            <div className="flex items-end gap-6">
+                                <div>
+                                    <p className="text-xs font-bold opacity-60 uppercase tracking-wider mb-1">Available Balance</p>
+                                    <p className="text-4xl font-black">₦{(referralEarnings.availableBalance || 0).toLocaleString()}</p>
+                                </div>
+                                <div className="pb-1 space-y-0.5">
+                                    <p className="text-xs font-semibold opacity-60">Referral Credits: ₦{referralEarnings.referralEarnings}</p>
+                                    <p className="text-xs font-semibold opacity-60">Reward Points: {referralEarnings.rewardPoints} pts (₦{referralEarnings.rewardPointsValue})</p>
+                                    {referralEarnings.pendingEarnings > 0 && (
+                                        <p className="text-xs font-semibold opacity-60">Pending: ₦{referralEarnings.pendingEarnings} (awaiting verifications)</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                                onClick={() => setShowReferralPanel(!showReferralPanel)}
+                                className="bg-white/20 hover:bg-white/30 text-white font-bold px-5 py-3 rounded-2xl transition-all flex items-center gap-2 text-sm"
+                            >
+                                <Users className="w-4 h-4" />
+                                My Referrals ({referralEarnings.totalCreditedReferrals + referralEarnings.totalPendingReferrals})
+                            </button>
+                            <button
+                                onClick={() => { setShowWithdrawModal(true); setWithdrawStep(1); }}
+                                className="bg-white text-primary font-bold px-5 py-3 rounded-2xl hover:bg-neutral-50 transition-all flex items-center gap-2 text-sm shadow-lg"
+                            >
+                                <Banknote className="w-4 h-4" />
+                                Withdraw Earnings
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Referral link hint */}
+                    <div className="relative z-10 mt-4 pt-4 border-t border-white/20 flex items-center gap-2">
+                        <p className="text-xs opacity-70">Your referral: Share your registered email with anyone joining TraceIt to earn ₦100 per verified user.</p>
+                    </div>
+                </div>
+            )}
+
+            {/* ── MY REFERRALS PANEL ── */}
+            {showReferralPanel && (
+                <div className="bg-white border border-neutral-200 rounded-[2.5rem] p-6 md:p-8 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-xl font-black text-foreground flex items-center gap-2">
+                            <Users className="w-5 h-5 text-primary" /> Users I Referred
+                        </h3>
+                        <button onClick={() => setShowReferralPanel(false)} className="w-8 h-8 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400 hover:text-foreground transition-all">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                    {myReferrals.length === 0 ? (
+                        <div className="text-center py-10 text-neutral-400">
+                            <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                            <p className="font-bold">No referrals yet</p>
+                            <p className="text-sm mt-1">Share your email with friends to earn ₦100 per verified user.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {myReferrals.map((r) => (
+                                <div key={r._id} className="flex items-center justify-between p-4 bg-neutral-50 rounded-2xl border border-neutral-100 hover:border-primary/20 transition-all">
+                                    <div>
+                                        <p className="font-bold text-foreground">{r.referred?.firstName} {r.referred?.lastName}</p>
+                                        <p className="text-xs text-neutral-500 font-medium">{r.referred?.email}</p>
+                                        <p className="text-xs text-neutral-400 mt-0.5">Joined {new Date(r.createdAt).toLocaleDateString()}</p>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <span className={`text-xs font-black px-3 py-1 rounded-full ${r.status === 'credited' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                            {r.status === 'credited' ? `+₦${r.commissionAmount}` : 'Pending'}
+                                        </span>
+                                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${r.referred?.isApproved ? 'bg-green-50 text-green-600' : 'bg-neutral-100 text-neutral-500'}`}>
+                                            {r.referred?.isApproved ? 'Verified' : 'Unverified'}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -632,32 +658,6 @@ export default function DashboardPage() {
                     </div>
                 </div>
             </div>
-
-            {/* Ad Carousel */}
-            {bannerAds.length > 0 && (
-                <div onClick={() => window.open(bannerAds[currentAdIdx].actionUrl, '_blank')} className="relative bg-neutral-100 rounded-[2.5rem] border border-neutral-100 shadow-sm overflow-hidden aspect-[21/9] md:aspect-[32/9] flex items-center group cursor-pointer transition-all hover:shadow-lg animate-in fade-in zoom-in-95 duration-700 w-full max-h-[300px]">
-                    {bannerAds[currentAdIdx].mediaUrl ? (
-                        <div className="absolute inset-0 bg-cover bg-center transition-transform duration-[10s] ease-out group-hover:scale-110" style={{ backgroundImage: `url(${bannerAds[currentAdIdx].mediaUrl})` }}></div>
-                    ) : (
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary-dark flex flex-col items-center justify-center p-8 text-white text-center">
-                            <h3 className="text-3xl font-black mb-2">{bannerAds[currentAdIdx].title}</h3>
-                            <p className="text-sm font-medium opacity-90 max-w-lg">{bannerAds[currentAdIdx].description}</p>
-                        </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
-                        <span className="bg-white text-primary font-black px-8 py-4 rounded-full shadow-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 flex items-center gap-2">
-                            {bannerAds[currentAdIdx].actionType === 'whatsapp' ? 'Connect on WhatsApp' : 'Visit Link'} <ChevronRight className="w-5 h-5" />
-                        </span>
-                    </div>
-                    {bannerAds.length > 1 && (
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
-                            {bannerAds.map((_, i) => (
-                                <div key={i} onClick={(e) => { e.stopPropagation(); setCurrentAdIdx(i); }} className={`w-2 h-2 rounded-full transition-all cursor-pointer shadow-sm ${i === currentAdIdx ? 'bg-white w-8' : 'bg-white/50 hover:bg-white/90'}`} />
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
 
             {isRestricted ? (
                 user?.hasPaid ? (
