@@ -16,6 +16,7 @@ import {
     Gamepad, 
     Monitor,
     ChevronLeft,
+    ChevronRight,
     CheckCircle2
 } from 'lucide-react';
 
