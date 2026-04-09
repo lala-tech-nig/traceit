@@ -16,7 +16,8 @@ import {
     searchUsers,
     getVerificators,
     manageVerificator,
-    getAdminVerifications
+    getAdminVerifications,
+    sendBulkEmail
 } from '../controllers/adminController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
@@ -46,6 +47,8 @@ router.get('/verificators', protect, admin, getVerificators);
 router.put('/verificators/:id/status', protect, admin, manageVerificator);
 router.get('/verificators/jobs', protect, admin, getAdminVerifications);
 
+// Email Centre
+router.post('/email/send', protect, admin, sendBulkEmail);
 
 export default router;
 

@@ -13,6 +13,12 @@ import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import { cloudinary } from '../config/cloudinary.js';
 import axios from 'axios';
+import {
+    sendWelcomeEmail,
+    sendActivationReminderEmail,
+    sendReEngagementEmail,
+    sendCustomEmail,
+} from '../utils/emailService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -490,6 +496,79 @@ export const getAdminVerifications = async (req, res) => {
             .populate('targetUser', 'firstName lastName email homeAddress phoneNumber')
             .sort({ assignedAt: -1 });
         res.json(jobs);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Send bulk emails to a target group
+// @route   POST /api/admin/email/send
+// @access  Private/Admin
+export const sendBulkEmail = async (req, res) => {
+    try {
+        const { target, messageType, customSubject, customBody } = req.body;
+
+        // Validate
+        const validTargets = ['all', 'pending', 'absent', 'active'];
+        const validTypes   = ['welcome', 'activation', 'reengagement', 'custom'];
+        if (!validTargets.includes(target))  return res.status(400).json({ message: 'Invalid target group' });
+        if (!validTypes.includes(messageType)) return res.status(400).json({ message: 'Invalid message type' });
+        if (messageType === 'custom' && (!customSubject?.trim() || !customBody?.trim())) {
+            return res.status(400).json({ message: 'Custom emails require a subject and body' });
+        }
+
+        const TWO_WEEKS = 14 * 24 * 60 * 60 * 1000;
+
+        // ── Build user query by target ────────────────────────────────────────
+        let filter = {};
+        if (target === 'pending') {
+            filter = { isApproved: false };
+        } else if (target === 'absent') {
+            const twoWeeksAgo = new Date(Date.now() - TWO_WEEKS);
+            filter = {
+                isApproved: true,
+                $or: [
+                    { lastLoginAt: { $lte: twoWeeksAgo } },
+                    { lastLoginAt: null, createdAt: { $lte: twoWeeksAgo } },
+                ],
+            };
+        } else if (target === 'active') {
+            filter = { isApproved: true };
+        }
+        // 'all' keeps filter = {}
+
+        const users = await User.find(filter).select('firstName lastName email hasPaid isApproved lastLoginAt');
+
+        if (!users.length) {
+            return res.status(200).json({ message: 'No users matched the selected target group', sent: 0, failed: 0, results: [] });
+        }
+
+        // ── Send emails ───────────────────────────────────────────────────────
+        const results = [];
+        let sent = 0, failed = 0;
+
+        for (const user of users) {
+            try {
+                if (messageType === 'welcome')       await sendWelcomeEmail(user);
+                else if (messageType === 'activation') await sendActivationReminderEmail(user);
+                else if (messageType === 'reengagement') await sendReEngagementEmail(user);
+                else if (messageType === 'custom')   await sendCustomEmail(user, customSubject, customBody);
+
+                results.push({ email: user.email, name: `${user.firstName} ${user.lastName}`, status: 'sent' });
+                sent++;
+            } catch (err) {
+                results.push({ email: user.email, name: `${user.firstName} ${user.lastName}`, status: 'failed', error: err.message });
+                failed++;
+            }
+        }
+
+        res.json({
+            message: `Bulk email completed: ${sent} sent, ${failed} failed`,
+            total: users.length,
+            sent,
+            failed,
+            results,
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

@@ -326,3 +326,26 @@ export const sendReEngagementEmail = async (user) => {
     });
     console.log(`[EMAIL] Re-engagement email sent → ${user.email}`);
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 4. CUSTOM EMAIL — admin-drafted message sent to any user
+// ═══════════════════════════════════════════════════════════════════════════════
+export const sendCustomEmail = async (user, subject, bodyHtml) => {
+    const html = wrap(`
+      <h1 style="font-size:24px; font-weight:800; color:#f1f5f9; margin-bottom:20px;">
+        Hi ${user.firstName},
+      </h1>
+      <div style="color:#cbd5e1; font-size:15px; line-height:1.85;">
+        ${bodyHtml}
+      </div>
+      <div style="margin-top:32px; text-align:center;">
+        ${btn('🔑 Visit Your Dashboard', `${APP_URL}/dashboard`)}
+        <p style="color:#4b5563; font-size:12px; margin-top:16px;">
+          Questions? Email us at <a href="mailto:${process.env.EMAIL_USER}" style="color:#6366f1;">${process.env.EMAIL_USER}</a>
+        </p>
+      </div>
+    `);
+
+    await transporter.sendMail({ from: FROM, to: user.email, subject, html });
+    console.log(`[EMAIL] Custom email sent → ${user.email}`);
+};
