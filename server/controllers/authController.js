@@ -2,6 +2,7 @@ import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
 import Referral from '../models/Referral.js';
 import VerificationJob from '../models/VerificationJob.js';
+import { sendWelcomeEmail } from '../utils/emailService.js';
 
 // Helper: assign a new verification job to the least-loaded available verificator
 const assignVerificationJob = async (newUserId) => {
@@ -95,6 +96,14 @@ export const registerUser = async (req, res) => {
         // Auto-assign a physical verification job to a verificator
         await assignVerificationJob(user._id);
 
+        // Send welcome email asynchronously (non-blocking)
+        if (user.welcomeEmailSentAt === null || user.welcomeEmailSentAt === undefined) {
+            sendWelcomeEmail(user).then(async () => {
+                user.welcomeEmailSentAt = new Date();
+                await user.save();
+            }).catch(err => console.error('[EMAIL] Welcome email failed:', err.message));
+        }
+
         if (user) {
             res.status(201).json({
                 _id: user._id,
@@ -136,6 +145,10 @@ export const loginUser = async (req, res) => {
                     email: user.email
                 });
             }
+
+            // Stamp last login time for re-engagement scheduler
+            user.lastLoginAt = new Date();
+            await user.save();
 
             res.json({
                 _id: user._id,

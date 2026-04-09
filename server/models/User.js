@@ -33,7 +33,12 @@ const userSchema = new mongoose.Schema({
         dailyPay: { type: Number, default: 0 },
         weeklyPay: { type: Number, default: 0 },
         monthlyPay: { type: Number, default: 0 }
-    }
+    },
+    // Email & session tracking
+    lastLoginAt: { type: Date, default: null },
+    welcomeEmailSentAt: { type: Date, default: null },
+    activationReminderSentAt: { type: Date, default: null },
+    reEngagementSentAt: { type: Date, default: null }
 }, {
     timestamps: true
 });

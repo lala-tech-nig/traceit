@@ -19,6 +19,7 @@ import adRoutes from './routes/adRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import referralRoutes from './routes/referralRoutes.js';
 import verificatorRoutes from './routes/verificatorRoutes.js';
+import { startEmailScheduler } from './utils/emailScheduler.js';
 
 dotenv.config();
 
@@ -50,6 +51,9 @@ const startServer = async () => {
     try {
         await connectDB();
         
+        // Start automated email scheduler
+        startEmailScheduler();
+
         const PORT = process.env.PORT || 5000;
         app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
     } catch (error) {
