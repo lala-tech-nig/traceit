@@ -43,7 +43,8 @@ import {
     UserX,
     AlertTriangle,
     CheckCheck,
-    Eye
+    Eye,
+    Zap
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -107,6 +108,7 @@ export default function AdminDashboard() {
 
     // ── Email Centre State ─────────────────────────────────────────────────────
     const [emailTarget, setEmailTarget]           = useState('pending');
+    const [emailMode, setEmailMode]               = useState('template'); // 'template' | 'custom'
     const [emailMsgType, setEmailMsgType]         = useState('activation');
     const [emailSubject, setEmailSubject]         = useState('');
     const [emailBody, setEmailBody]               = useState('');
@@ -500,15 +502,22 @@ export default function AdminDashboard() {
     // ── Email Centre ───────────────────────────────────────────────────────────
     const handleSendBulkEmail = async (e) => {
         e.preventDefault();
-        if (!window.confirm(`Send "${emailMsgType}" email to all "${emailTarget}" users? This cannot be undone.`)) return;
+        
+        const typeToSend = emailMode === 'custom' ? 'custom' : emailMsgType;
+        const confirmMsg = emailMode === 'custom' 
+            ? `Send custom broadcast to all "${emailTarget}" users?` 
+            : `Send "${emailMsgType}" template to all "${emailTarget}" users?`;
+
+        if (!window.confirm(`${confirmMsg} This cannot be undone.`)) return;
+        
         setEmailSending(true);
         setEmailResults(null);
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
             const payload = {
                 target: emailTarget,
-                messageType: emailMsgType,
-                ...(emailMsgType === 'custom' ? { customSubject: emailSubject, customBody: emailBody } : {})
+                messageType: typeToSend,
+                ...(typeToSend === 'custom' ? { customSubject: emailSubject, customBody: emailBody } : {})
             };
             const res = await axios.post(`${API_URL}/admin/email/send`, payload, config);
             setEmailResults(res.data);
@@ -1901,185 +1910,306 @@ export default function AdminDashboard() {
 
             {/* ── Email Centre Tab ───────────────────────────────────── */}
             {activeTab === 'email' && (
-                <div className="flex-1 overflow-y-auto p-8">
-                    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-neutral-50/30">
+                    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-                        {/* Header */}
-                        <div className="flex items-center gap-4">
-                            <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
-                                <Mail className="w-7 h-7" />
+                        {/* Header & Mode Switcher */}
+                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                            <div className="flex items-center gap-5">
+                                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-primary text-white rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-primary/20">
+                                    <Mail className="w-8 h-8" />
+                                </div>
+                                <div>
+                                    <h2 className="text-3xl font-black text-foreground tracking-tight">Email Centre</h2>
+                                    <p className="text-sm font-medium text-neutral-500">Automated workflows and custom campaigns.</p>
+                                </div>
                             </div>
-                            <div>
-                                <h2 className="text-2xl font-black text-foreground">Email Centre</h2>
-                                <p className="text-sm font-medium text-neutral-500">Send targeted email campaigns to platform users instantly.</p>
+
+                            {/* Mode Toggle */}
+                            <div className="bg-white p-1.5 rounded-2xl border border-neutral-200 flex shadow-sm">
+                                {[
+                                    { id: 'template', label: '⚡ Smart Templates', icon: Smartphone },
+                                    { id: 'custom',   label: '🎨 Custom Broadcast',  icon: Edit3 }
+                                ].map(m => (
+                                    <button
+                                        key={m.id}
+                                        onClick={() => setEmailMode(m.id)}
+                                        className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-xs font-black transition-all ${
+                                            emailMode === m.id 
+                                                ? 'bg-primary text-white shadow-md shadow-primary/20' 
+                                                : 'text-neutral-400 hover:text-foreground hover:bg-neutral-50'
+                                        }`}
+                                    >
+                                        <m.icon className="w-3.5 h-3.5" />
+                                        {m.label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
-                        <form onSubmit={handleSendBulkEmail} className="space-y-8">
-
-                            {/* Step 1 — Target Audience */}
-                            <div className="bg-white border border-neutral-200 rounded-[2rem] p-8 shadow-sm">
-                                <div className="flex items-center gap-3 mb-6">
-                                    <span className="w-7 h-7 bg-primary text-white rounded-full flex items-center justify-center text-xs font-black">1</span>
-                                    <h3 className="text-base font-black text-foreground">Select Target Audience</h3>
-                                </div>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {[
-                                        { id: 'pending', label: 'Pending Users', desc: 'Registered, not yet approved', icon: UserX, color: 'amber' },
-                                        { id: 'absent',  label: 'Inactive Users', desc: 'Not logged in for 2+ weeks',  icon: AlertTriangle, color: 'orange' },
-                                        { id: 'active',  label: 'Active Users',  desc: 'All approved accounts',       icon: UserCheck, color: 'green' },
-                                        { id: 'all',     label: 'All Users',     desc: 'Everyone on the platform',    icon: Users2, color: 'blue' },
-                                    ].map(t => {
-                                        const colorMap = { amber:'bg-amber-50 text-amber-600 border-amber-200', orange:'bg-orange-50 text-orange-600 border-orange-200', green:'bg-green-50 text-green-600 border-green-200', blue:'bg-blue-50 text-blue-600 border-blue-200' };
-                                        const selectedMap = { amber:'border-amber-500 bg-amber-50', orange:'border-orange-500 bg-orange-50', green:'border-green-500 bg-green-50', blue:'border-blue-500 bg-blue-50' };
-                                        const isSelected = emailTarget === t.id;
-                                        return (
-                                            <button type="button" key={t.id} onClick={() => setEmailTarget(t.id)}
-                                                className={`p-5 rounded-2xl border-2 text-left transition-all hover:shadow-md ${isSelected ? selectedMap[t.color] + ' shadow-md' : 'border-neutral-200 bg-neutral-50 hover:bg-white'}`}>
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${colorMap[t.color]}`}>
-                                                    <t.icon className="w-5 h-5" />
-                                                </div>
-                                                <p className="font-black text-sm text-foreground">{t.label}</p>
-                                                <p className="text-xs text-neutral-500 font-medium mt-1 leading-snug">{t.desc}</p>
-                                                {isSelected && <div className="mt-3 flex items-center gap-1 text-xs font-black text-primary"><CheckCheck className="w-3.5 h-3.5" /> Selected</div>}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Step 2 — Message Type */}
-                            <div className="bg-white border border-neutral-200 rounded-[2rem] p-8 shadow-sm">
-                                <div className="flex items-center gap-3 mb-6">
-                                    <span className="w-7 h-7 bg-primary text-white rounded-full flex items-center justify-center text-xs font-black">2</span>
-                                    <h3 className="text-base font-black text-foreground">Choose Message Template</h3>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {[
-                                        { id: 'welcome',      label: '🎉 Welcome Email',          desc: 'Platform intro, features, earning tips' },
-                                        { id: 'activation',   label: '⏳ Activation Reminder',     desc: 'Nudge pending users to complete setup' },
-                                        { id: 'reengagement', label: '😔 Re-engagement Email',     desc: "We miss you — come back to TraceIt" },
-                                        { id: 'custom',       label: '✍️ Custom Draft',            desc: 'Write your own subject and message' },
-                                    ].map(m => {
-                                        const isSelected = emailMsgType === m.id;
-                                        return (
-                                            <button type="button" key={m.id} onClick={() => setEmailMsgType(m.id)}
-                                                className={`p-5 rounded-2xl border-2 text-left transition-all ${isSelected ? 'border-primary bg-primary/5 shadow-md shadow-primary/10' : 'border-neutral-200 bg-neutral-50 hover:bg-white hover:border-neutral-300'}`}>
-                                                <p className={`font-black text-sm ${isSelected ? 'text-primary' : 'text-foreground'}`}>{m.label}</p>
-                                                <p className="text-xs text-neutral-500 font-medium mt-1">{m.desc}</p>
-                                                {isSelected && <div className="mt-2 flex items-center gap-1 text-xs font-black text-primary"><CheckCheck className="w-3.5 h-3.5" /> Selected</div>}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Step 3 — Custom Draft (conditional) */}
-                            {emailMsgType === 'custom' && (
-                                <div className="bg-white border border-neutral-200 rounded-[2rem] p-8 shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <span className="w-7 h-7 bg-primary text-white rounded-full flex items-center justify-center text-xs font-black">3</span>
-                                        <h3 className="text-base font-black text-foreground">Draft Your Message</h3>
+                        <form onSubmit={handleSendBulkEmail} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                            
+                            {/* Left Column: Target & Template Selection */}
+                            <div className="lg:col-span-12 xl:col-span-5 space-y-8">
+                                
+                                {/* Target Audience */}
+                                <div className="bg-white border border-neutral-200 rounded-[2.5rem] p-8 shadow-sm">
+                                    <div className="flex items-center gap-3 mb-8">
+                                        <div className="w-8 h-8 bg-neutral-900 text-white rounded-full flex items-center justify-center text-xs font-black">1</div>
+                                        <h3 className="text-lg font-black text-foreground">Target Audience</h3>
                                     </div>
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-xs font-black text-neutral-500 uppercase tracking-widest mb-2">Email Subject Line</label>
-                                            <input type="text" required value={emailSubject} onChange={e => setEmailSubject(e.target.value)}
-                                                placeholder="e.g. Important update regarding your TraceIt account..."
-                                                className="w-full px-4 py-3 border border-neutral-200 rounded-xl text-sm font-medium outline-none focus:border-primary transition-all bg-neutral-50" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-black text-neutral-500 uppercase tracking-widest mb-2">Message Body <span className="text-neutral-400 normal-case font-medium">(HTML supported)</span></label>
-                                            <textarea required rows={10} value={emailBody} onChange={e => setEmailBody(e.target.value)}
-                                                placeholder="Write your message here. You can use <strong>, <br/>, <a href=...>, <ul><li>... etc."
-                                                className="w-full px-4 py-3 border border-neutral-200 rounded-xl text-sm font-medium outline-none focus:border-primary transition-all bg-neutral-50 resize-none font-mono" />
-                                            <p className="text-xs text-neutral-400 font-medium mt-2">💡 Tip: The recipient's first name ({'{firstName}'}) is automatically added as a greeting above your message.</p>
-                                        </div>
-
-                                        {/* Live Preview */}
-                                        {emailBody && (
-                                            <div>
-                                                <button type="button" onClick={() => setEmailPreview(!emailPreview)}
-                                                    className="flex items-center gap-2 text-xs font-black text-primary hover:text-primary-dark transition-colors">
-                                                    <Eye className="w-3.5 h-3.5" /> {emailPreview ? 'Hide Preview' : 'Show Preview'}
-                                                </button>
-                                                {emailPreview && (
-                                                    <div className="mt-3 border border-neutral-200 rounded-xl overflow-hidden">
-                                                        <div className="bg-neutral-100 px-4 py-2 border-b border-neutral-200 flex items-center gap-2">
-                                                            <span className="w-3 h-3 rounded-full bg-red-400" />
-                                                            <span className="w-3 h-3 rounded-full bg-amber-400" />
-                                                            <span className="w-3 h-3 rounded-full bg-green-400" />
-                                                            <span className="text-xs text-neutral-500 font-medium ml-2">Message Preview</span>
-                                                        </div>
-                                                        <div className="bg-[#111827] p-6 text-[#cbd5e1] text-sm leading-relaxed min-h-[100px]"
-                                                            dangerouslySetInnerHTML={{ __html: `<strong style="color:#f1f5f9">Hi [First Name],</strong><br/><br/>${emailBody}` }} />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {[
+                                            { id: 'pending', label: 'Pending', desc: 'Awaiting Approval', icon: Clock, color: 'amber' },
+                                            { id: 'absent',  label: 'Inactive', desc: 'Absent 2+ Weeks',  icon: UserX, color: 'orange' },
+                                            { id: 'active',  label: 'Active',   desc: 'Approved Users',    icon: UserCheck, color: 'green' },
+                                            { id: 'all',     label: 'Everyone', desc: 'Full Database',    icon: Users2, color: 'indigo' },
+                                        ].map(t => {
+                                            const colors = {
+                                                amber: 'bg-amber-50 text-amber-600',
+                                                orange: 'bg-orange-50 text-orange-600',
+                                                green: 'bg-green-50 text-green-600',
+                                                indigo: 'bg-indigo-50 text-indigo-600'
+                                            };
+                                            const isSelected = emailTarget === t.id;
+                                            return (
+                                                <button type="button" key={t.id} onClick={() => setEmailTarget(t.id)}
+                                                    className={`group p-5 rounded-3xl border-2 text-left transition-all ${
+                                                        isSelected 
+                                                            ? 'border-primary bg-primary/[0.02] shadow-xl shadow-primary/5' 
+                                                            : 'border-neutral-100 bg-white hover:border-neutral-200'
+                                                    }`}>
+                                                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 ${colors[t.color]}`}>
+                                                        <t.icon className="w-5 h-5" />
                                                     </div>
-                                                )}
-                                            </div>
-                                        )}
+                                                    <p className="font-black text-base text-foreground">{t.label}</p>
+                                                    <p className="text-xs text-neutral-400 font-bold mt-1">{t.desc}</p>
+                                                    {isSelected && <div className="mt-4 flex items-center gap-1.5 text-[10px] font-black uppercase text-primary tracking-widest animate-in fade-in zoom-in-95 duration-300"><CheckCheck className="w-3.5 h-3.5" /> Selected</div>}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Send Button */}
-                            <div className="flex items-center justify-between bg-white border border-neutral-200 rounded-[2rem] p-6 shadow-sm">
-                                <div>
-                                    <p className="font-black text-foreground text-sm">Ready to send?</p>
-                                    <p className="text-xs text-neutral-500 font-medium mt-0.5">
-                                        Sending <span className="font-black text-primary capitalize">{emailMsgType}</span> email to <span className="font-black text-primary capitalize">{emailTarget}</span> users.
-                                    </p>
+                                {/* Quick Template Selection (Only in Template Mode) */}
+                                {emailMode === 'template' && (
+                                    <div className="bg-white border border-neutral-200 rounded-[2.5rem] p-8 shadow-sm animate-in fade-in slide-in-from-left-4 duration-500">
+                                        <div className="flex items-center gap-3 mb-8">
+                                            <div className="w-8 h-8 bg-neutral-900 text-white rounded-full flex items-center justify-center text-xs font-black">2</div>
+                                            <h3 className="text-lg font-black text-foreground">Template Gallery</h3>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {[
+                                                { id: 'welcome',      label: 'Welcome Onboard',   icon: Megaphone, color: 'blue' },
+                                                { id: 'activation',   label: 'Daily Approval Reminder', icon: Smartphone, color: 'purple' },
+                                                { id: 'reengagement', label: 'Miss You Message',  icon: Radio, color: 'pink' },
+                                            ].map(m => {
+                                                const isSelected = emailMsgType === m.id;
+                                                return (
+                                                    <button type="button" key={m.id} onClick={() => setEmailMsgType(m.id)}
+                                                        className={`w-full flex items-center justify-between p-5 rounded-2xl border-2 transition-all ${
+                                                            isSelected ? 'border-primary bg-primary/5' : 'border-neutral-50 bg-neutral-50/50 hover:bg-white hover:border-neutral-100'
+                                                        }`}>
+                                                        <div className="flex items-center gap-4">
+                                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isSelected ? 'bg-primary text-white' : 'bg-white text-neutral-400 border border-neutral-100'}`}>
+                                                                <m.icon className="w-4 h-4" />
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <p className={`text-sm font-black ${isSelected ? 'text-primary' : 'text-foreground'}`}>{m.label}</p>
+                                                                <p className="text-[11px] text-neutral-400 font-bold uppercase tracking-wider">System Default</p>
+                                                            </div>
+                                                        </div>
+                                                        {isSelected && <CheckCircle className="w-5 h-5 text-primary" />}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Right Column: Content Editor / Preview */}
+                            <div className="lg:col-span-12 xl:col-span-7 space-y-8">
+                                
+                                {emailMode === 'template' ? (
+                                    <div className="bg-[#0f0f11] rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden min-h-[500px] flex flex-col items-center justify-center text-center animate-in fade-in slide-in-from-right-4 duration-500">
+                                        {/* Abstract background elements */}
+                                        <div className="absolute top-20 left-10 w-40 h-40 bg-primary/20 blur-[100px] rounded-full" />
+                                        <div className="absolute bottom-10 right-10 w-60 h-60 bg-indigo-500/10 blur-[100px] rounded-full" />
+                                        
+                                        <div className="relative z-10 max-w-sm">
+                                            <div className="w-20 h-20 bg-white/5 border border-white/10 rounded-3xl flex items-center justify-center mx-auto mb-8">
+                                                <Zap className="w-10 h-10 text-primary animate-pulse" />
+                                            </div>
+                                            <h4 className="text-2xl font-black text-white mb-4">Smart Template Active</h4>
+                                            <p className="text-sm text-white/40 font-medium leading-relaxed">
+                                                You are using a optimized, TraceIt-branded system template. The layout, colors, and links are pre-configured for maximum engagement.
+                                            </p>
+                                            
+                                            <div className="mt-10 p-5 bg-white/5 border border-white/10 rounded-[1.5rem] flex items-center gap-4 text-left">
+                                                <div className="w-10 h-10 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center shrink-0">
+                                                    <CheckCircle className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-black text-white uppercase tracking-widest">Safe Send Enabled</p>
+                                                    <p className="text-[11px] text-white/30 font-bold">Dynamic user data like first names will be injected automatically.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="bg-white border border-neutral-200 rounded-[2.5rem] p-8 shadow-sm space-y-8 animate-in mt-in fade-in slide-in-from-bottom-4 duration-500">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 bg-neutral-900 text-white rounded-full flex items-center justify-center text-xs font-black">2</div>
+                                                <h3 className="text-lg font-black text-foreground">Composer</h3>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                                <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Editor Active</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-6">
+                                            <div>
+                                                <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2.5 ml-1">Campaign Subject</label>
+                                                <input 
+                                                    type="text" required value={emailSubject} onChange={e => setEmailSubject(e.target.value)}
+                                                    placeholder="Enter subject line..."
+                                                    className="w-full px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl text-sm font-bold outline-none focus:border-primary transition-all shadow-inner" 
+                                                />
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center justify-between mb-2.5 ml-1">
+                                                    <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Message Body</label>
+                                                    <span className="text-[10px] font-bold text-neutral-300">HTML Supported</span>
+                                                </div>
+                                                <textarea 
+                                                    required rows={12} value={emailBody} onChange={e => setEmailBody(e.target.value)}
+                                                    placeholder="Write your broadcast message..."
+                                                    className="w-full px-6 py-5 bg-neutral-50 border border-neutral-100 rounded-2xl text-sm font-medium outline-none focus:border-primary transition-all shadow-inner resize-none font-mono leading-relaxed" 
+                                                />
+                                            </div>
+
+                                            {/* Advanced Preview Toggle */}
+                                            {emailBody && (
+                                                <div className="pt-4">
+                                                    <button type="button" onClick={() => setEmailPreview(!emailPreview)}
+                                                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 font-black text-xs transition-all ${
+                                                            emailPreview ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-neutral-100 text-neutral-400 hover:border-neutral-200'
+                                                        }`}>
+                                                        <Eye className="w-3.5 h-3.5" /> 
+                                                        {emailPreview ? 'Hide Live Preview' : 'Show Live Preview'}
+                                                    </button>
+                                                    
+                                                    {emailPreview && (
+                                                        <div className="mt-5 border border-neutral-200 rounded-[2rem] overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+                                                            <div className="bg-neutral-900 px-6 py-4 flex items-center justify-between">
+                                                                <div className="flex gap-1.5">
+                                                                    <div className="w-2.5 h-2.5 rounded-full bg-red-500/50" />
+                                                                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500/50" />
+                                                                    <div className="w-2.5 h-2.5 rounded-full bg-green-500/50" />
+                                                                </div>
+                                                                <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">Dark Reader Rendering</span>
+                                                            </div>
+                                                            <div className="bg-[#0f172a] p-8 text-[#94a3b8] text-sm leading-relaxed"
+                                                                dangerouslySetInnerHTML={{ __html: `<h1 style="color:#f8fafc; font-size:20px; font-weight:800; margin-bottom:16px;">Hi John,</h1>${emailBody.replace(/\n/g, '<br/>')}` }} />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Floating Action Bar */}
+                                <div className="bg-white border border-neutral-200 rounded-[2.5rem] p-6 shadow-xl shadow-neutral-200/50 flex flex-col sm:flex-row items-center justify-between gap-6 sticky bottom-8 z-20">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shrink-0">
+                                            <Send className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-black text-foreground">Launch Campaign</p>
+                                            <p className="text-[11px] text-neutral-400 font-bold uppercase tracking-wider">
+                                                Target: <span className="text-primary">{emailTarget}</span> • Mode: <span className="text-primary">{emailMode}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        type="submit" 
+                                        disabled={emailSending}
+                                        className="w-full sm:w-auto px-10 py-4 bg-primary text-white rounded-[1.25rem] font-black text-sm hover:translate-y-[-2px] hover:shadow-2xl hover:shadow-primary/40 transition-all active:scale-95 disabled:opacity-50 disabled:translate-y-0"
+                                    >
+                                        {emailSending ? (
+                                            <div className="flex items-center gap-3">
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                <span>Broadcasting...</span>
+                                            </div>
+                                        ) : (
+                                            "Send Broadcast Now"
+                                        )}
+                                    </button>
                                 </div>
-                                <button type="submit" disabled={emailSending}
-                                    className="flex items-center gap-2.5 px-8 py-3.5 bg-primary text-white rounded-xl font-black text-sm hover:bg-primary-dark transition-all shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    {emailSending
-                                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
-                                        : <><Send className="w-4 h-4" /> Send Emails</>
-                                    }
-                                </button>
                             </div>
                         </form>
 
                         {/* Results Panel */}
                         {emailResults && (
-                            <div className="bg-white border border-neutral-200 rounded-[2rem] overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
-                                    <h3 className="font-black text-foreground">Campaign Results</h3>
-                                    <button onClick={() => setEmailResults(null)} className="text-neutral-400 hover:text-red-500 transition-colors text-xs font-bold">✕ Clear</button>
+                            <div className="bg-white border border-neutral-200 rounded-[3rem] overflow-hidden shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-700">
+                                <div className="p-10 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+                                    <div>
+                                        <h3 className="text-2xl font-black text-foreground tracking-tight">Campaign Report</h3>
+                                        <p className="text-xs text-neutral-400 font-bold uppercase tracking-[0.2rem] mt-1.5">Delivery Status Breakdown</p>
+                                    </div>
+                                    <button onClick={() => setEmailResults(null)} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white border border-neutral-200 text-neutral-400 hover:text-red-500 hover:border-red-100 transition-all">
+                                        <ArrowUpDown className="w-5 h-5" />
+                                    </button>
                                 </div>
 
-                                {/* Summary Stats */}
-                                <div className="grid grid-cols-3 divide-x divide-neutral-100 border-b border-neutral-100">
-                                    <div className="p-6 text-center">
-                                        <p className="text-3xl font-black text-foreground">{emailResults.total}</p>
-                                        <p className="text-xs font-black text-neutral-400 uppercase tracking-widest mt-1">Total</p>
+                                <div className="grid grid-cols-1 md:grid-cols-3">
+                                    <div className="p-10 text-center border-b md:border-b-0 md:border-r border-neutral-100 group">
+                                        <div className="text-5xl font-black text-foreground mb-3 group-hover:scale-110 transition-transform">{emailResults.total}</div>
+                                        <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Users Targeted</div>
                                     </div>
-                                    <div className="p-6 text-center">
-                                        <p className="text-3xl font-black text-green-600">{emailResults.sent}</p>
-                                        <p className="text-xs font-black text-neutral-400 uppercase tracking-widest mt-1">Sent ✓</p>
+                                    <div className="p-10 text-center border-b md:border-b-0 md:border-r border-neutral-100 group">
+                                        <div className="text-5xl font-black text-green-500 mb-3 group-hover:scale-110 transition-transform">{emailResults.sent}</div>
+                                        <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Delivered Successfully</div>
                                     </div>
-                                    <div className="p-6 text-center">
-                                        <p className="text-3xl font-black text-red-500">{emailResults.failed}</p>
-                                        <p className="text-xs font-black text-neutral-400 uppercase tracking-widest mt-1">Failed ✗</p>
+                                    <div className="p-10 text-center group">
+                                        <div className="text-5xl font-black text-red-500 mb-3 group-hover:scale-110 transition-transform">{emailResults.failed}</div>
+                                        <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Failed Attempts</div>
                                     </div>
                                 </div>
 
-                                {/* Per-user breakdown */}
-                                <div className="max-h-96 overflow-y-auto divide-y divide-neutral-50">
-                                    {emailResults.results?.map((r, i) => (
-                                        <div key={i} className="flex items-center justify-between px-6 py-3.5 hover:bg-neutral-50 transition-colors">
-                                            <div>
-                                                <p className="text-sm font-bold text-foreground">{r.name}</p>
-                                                <p className="text-xs text-neutral-500 font-medium">{r.email}</p>
+                                <div className="max-h-[500px] overflow-y-auto bg-neutral-50/30">
+                                    <div className="px-10 py-6 sticky top-0 bg-neutral-100/80 backdrop-blur-md border-b border-neutral-200 flex items-center justify-between">
+                                        <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Recipient Details</span>
+                                        <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Status</span>
+                                    </div>
+                                    <div className="divide-y divide-neutral-100">
+                                        {emailResults.results?.map((r, i) => (
+                                            <div key={i} className="flex items-center justify-between px-10 py-5 hover:bg-white transition-colors">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm ${r.status === 'sent' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                                        {r.name.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-black text-foreground">{r.name}</p>
+                                                        <p className="text-xs text-neutral-400 font-medium">{r.email}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className={`text-[9px] font-black uppercase tracking-[0.15em] px-3 py-1.5 rounded-lg inline-block ${r.status === 'sent' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                        {r.status === 'sent' ? '✓ Delivered' : '✗ Failed'}
+                                                    </div>
+                                                    {r.error && <p className="text-[9px] text-red-400 font-medium mt-1">{r.error}</p>}
+                                                </div>
                                             </div>
-                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${r.status === 'sent' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
-                                                {r.status === 'sent' ? '✓ sent' : `✗ ${r.error || 'failed'}`}
-                                            </span>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         )}
-
                     </div>
                 </div>
             )}

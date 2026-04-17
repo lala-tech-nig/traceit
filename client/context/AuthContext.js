@@ -74,6 +74,20 @@ export const AuthProvider = ({ children }) => {
 
     };
 
+    const sendOtp = async (email, firstName) => {
+        try {
+            await axios.post(`${API_URL}/auth/send-otp`, { email, firstName });
+            return { success: true };
+        } catch (error) {
+            return {
+                success: false,
+                message: error.response && error.response.data.message
+                    ? error.response.data.message
+                    : error.message
+            };
+        }
+    };
+
     const register = async (formData) => {
         try {
             const config = {
@@ -104,7 +118,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading, API_URL, checkAndLoadUser }}>
+        <AuthContext.Provider value={{ user, login, register, sendOtp, logout, loading, API_URL, checkAndLoadUser }}>
             {children}
         </AuthContext.Provider>
     );

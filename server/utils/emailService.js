@@ -349,3 +349,44 @@ export const sendCustomEmail = async (user, subject, bodyHtml) => {
     await transporter.sendMail({ from: FROM, to: user.email, subject, html });
     console.log(`[EMAIL] Custom email sent → ${user.email}`);
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 5. OTP EMAIL — sent during account creation for verification
+// ═══════════════════════════════════════════════════════════════════════════════
+export const sendOtpEmail = async (email, otp, firstName) => {
+    const html = wrap(`
+      <div style="text-align:center; margin-bottom:32px;">
+        <div style="font-size:52px; margin-bottom:12px;">🔐</div>
+        <h1 style="font-size:26px; font-weight:800; color:#f1f5f9; margin-bottom:10px;">
+          Verify your email address
+        </h1>
+        <p style="color:#94a3b8; font-size:15px; line-height:1.7; max-width:440px; margin:0 auto;">
+          Hi ${firstName || 'there'}, you're almost done creating your TraceIt account! Please use the code below to verify your email.
+        </p>
+      </div>
+
+      <div style="background:#1e2535; border-radius:14px; padding:32px; margin-bottom:28px; border:1px solid #334155; text-align:center;">
+        <p style="color:#94a3b8; font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:12px;">Your Verification Code</p>
+        <div style="font-size:42px; font-weight:800; color:#6366f1; letter-spacing:8px; margin:0 auto; padding:16px; background:#0f172a; border-radius:12px; display:inline-block; border:1px dashed #4338ca;">
+          ${otp}
+        </div>
+        <p style="color:#64748b; font-size:13px; margin-top:16px;">
+          This code will expire in <strong>10 minutes</strong>.
+        </p>
+      </div>
+
+      <div style="text-align:center;">
+        <p style="color:#4b5563; font-size:12px; margin-top:14px;">
+          If you didn't request this code, you can safely ignore this email.
+        </p>
+      </div>
+    `);
+
+    await transporter.sendMail({
+        from: FROM,
+        to: email,
+        subject: `Your TraceIt Verification Code: ${otp}`,
+        html,
+    });
+    console.log(`[EMAIL] OTP email sent → ${email}`);
+};

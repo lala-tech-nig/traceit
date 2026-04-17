@@ -2,7 +2,8 @@ import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
 import Referral from '../models/Referral.js';
 import VerificationJob from '../models/VerificationJob.js';
-import { sendWelcomeEmail } from '../utils/emailService.js';
+import OTP from '../models/OTP.js';
+import { sendWelcomeEmail, sendOtpEmail } from '../utils/emailService.js';
 
 // Helper: assign a new verification job to the least-loaded available verificator
 const assignVerificationJob = async (newUserId) => {
@@ -35,18 +36,66 @@ const assignVerificationJob = async (newUserId) => {
     }
 };
 
+// @desc    Send OTP to user email
+// @route   POST /api/auth/send-otp
+// @access  Public
+export const sendRegistrationOTP = async (req, res) => {
+    try {
+        const { email, firstName } = req.body;
+        if (!email) {
+            return res.status(400).json({ message: 'Email is required' });
+        }
+
+        const lowerEmail = email.toLowerCase().trim();
+
+        // Check if user already exists
+        const userExists = await User.findOne({ email: lowerEmail });
+        if (userExists) {
+            return res.status(400).json({ message: 'An account with this email address already exists. Please log in instead.' });
+        }
+
+        // Generate 6 digit OTP
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // Delete existing OTPs for this email to avoid duplicates
+        await OTP.deleteMany({ email: lowerEmail });
+
+        // Save new OTP
+        await OTP.create({
+            email: lowerEmail,
+            otp: otpCode
+        });
+
+        // Send OTP via email
+        await sendOtpEmail(lowerEmail, otpCode, firstName);
+
+        res.status(200).json({ message: 'OTP sent successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // @desc    Register a new user
 // @route   POST /api/auth/register
 // @access  Public
 export const registerUser = async (req, res) => {
     try {
-        const { firstName, lastName, phoneNumber, homeAddress, email: rawEmail, password, role, mainVendorId, referralEmail } = req.body;
+        const { firstName, lastName, phoneNumber, homeAddress, email: rawEmail, password, role, mainVendorId, referralEmail, otp } = req.body;
         const email = rawEmail?.toLowerCase();
 
         const userExists = await User.findOne({ email });
 
         if (userExists) {
             return res.status(400).json({ message: 'An account with this email address already exists. Please log in instead.' });
+        }
+
+        if (!otp) {
+            return res.status(400).json({ message: 'OTP is required to register.' });
+        }
+
+        const validOtp = await OTP.findOne({ email, otp });
+        if (!validOtp) {
+            return res.status(400).json({ message: 'Invalid or expired OTP. Please request a new one.' });
         }
 
         let imageUrl = null;
@@ -103,6 +152,9 @@ export const registerUser = async (req, res) => {
                 await user.save();
             }).catch(err => console.error('[EMAIL] Welcome email failed:', err.message));
         }
+
+        // Delete the used OTP
+        await OTP.deleteMany({ email });
 
         if (user) {
             res.status(201).json({

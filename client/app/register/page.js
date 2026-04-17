@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
-import { UploadCloud, Users, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { UploadCloud, Users, Eye, EyeOff, CheckCircle2, ShieldCheck, RefreshCw } from 'lucide-react';
 
 export default function RegisterPage() {
     const [step, setStep] = useState(1);
@@ -15,20 +15,30 @@ export default function RegisterPage() {
         email: '',
         password: '',
         role: 'basic',
-        referralEmail: ''
+        referralEmail: '',
+        otp: ''
     });
     const [image, setImage] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
-    const { register } = useAuth();
+    const [otpCooldown, setOtpCooldown] = useState(0);
+    const { register, sendOtp } = useAuth();
 
     useEffect(() => {
         return () => {
             if (imagePreview) URL.revokeObjectURL(imagePreview);
         };
     }, [imagePreview]);
+
+    useEffect(() => {
+        let timer;
+        if (otpCooldown > 0) {
+            timer = setInterval(() => setOtpCooldown(prev => prev - 1), 1000);
+        }
+        return () => clearInterval(timer);
+    }, [otpCooldown]);
 
     const isStep1Valid = () => {
         return formData.firstName.trim() !== '' && 
@@ -74,6 +84,7 @@ export default function RegisterPage() {
         if (formData.referralEmail.trim()) {
             data.append('referralEmail', formData.referralEmail.trim());
         }
+        data.append('otp', formData.otp);
         if (image) {
             data.append('image', image);
         }
@@ -85,9 +96,34 @@ export default function RegisterPage() {
         setLoading(false);
     };
 
+    const handleSendOtp = async () => {
+        setError('');
+        setLoading(true);
+        const result = await sendOtp(formData.email, formData.firstName);
+        if (result.success) {
+            setStep(4);
+            setOtpCooldown(60); // 60 seconds cooldown
+        } else {
+            setError(result.message);
+        }
+        setLoading(false);
+    };
+
+    const handleResendOtp = async () => {
+        if (otpCooldown > 0) return;
+        setError('');
+        const result = await sendOtp(formData.email, formData.firstName);
+        if (result.success) {
+            setOtpCooldown(60);
+        } else {
+            setError(result.message);
+        }
+    };
+
     const nextStep = () => {
         if (step === 1 && isStep1Valid()) setStep(2);
         else if (step === 2 && isStep2Valid()) setStep(3);
+        else if (step === 3 && isFormValid()) handleSendOtp();
     };
 
     const prevStep = () => {
@@ -112,14 +148,14 @@ export default function RegisterPage() {
                     <div className="absolute top-0 left-0 w-full h-1.5 bg-neutral-100">
                         <div 
                             className="h-full bg-primary transition-all duration-500 ease-out" 
-                            style={{ width: `${(step / 3) * 100}%` }}
+                            style={{ width: `${(step / 4) * 100}%` }}
                         ></div>
                     </div>
 
                     <div className="mb-8 flex justify-between items-center">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary bg-primary/10 px-3 py-1 rounded-full">Step {step} of 3</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary bg-primary/10 px-3 py-1 rounded-full">Step {step} of 4</span>
                         <div className="flex gap-1.5">
-                            {[1, 2, 3].map((s) => (
+                            {[1, 2, 3, 4].map((s) => (
                                 <div key={s} className={`w-2 h-2 rounded-full transition-all duration-300 ${s <= step ? 'bg-primary w-4' : 'bg-neutral-200'}`} />
                             ))}
                         </div>
@@ -226,30 +262,67 @@ export default function RegisterPage() {
                             </div>
                         )}
 
+                        {step === 4 && (
+                            <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-500 text-center">
+                                <div className="mx-auto w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-6">
+                                    <ShieldCheck className="w-8 h-8" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-foreground">Verify your Email</h3>
+                                <p className="text-neutral-500 text-sm">
+                                    We've sent a 6-digit verification code to <br />
+                                    <strong className="text-foreground">{formData.email}</strong>
+                                </p>
+                                <div className="pt-4">
+                                    <label className="block text-sm font-bold text-neutral-600 mb-2">Enter Verification Code</label>
+                                    <input 
+                                        name="otp" 
+                                        value={formData.otp} 
+                                        type="text" 
+                                        maxLength={6}
+                                        required 
+                                        onChange={handleChange} 
+                                        className="appearance-none block w-full px-5 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all text-center text-2xl font-black tracking-[0.5em] sm:text-2xl" 
+                                        placeholder="------" 
+                                    />
+                                </div>
+                                <div className="pt-2 text-sm">
+                                    <button 
+                                        type="button" 
+                                        onClick={handleResendOtp}
+                                        disabled={otpCooldown > 0}
+                                        className="text-primary font-bold hover:underline disabled:text-neutral-400 disabled:no-underline flex items-center justify-center gap-1.5 mx-auto"
+                                    >
+                                        <RefreshCw className={`w-4 h-4 ${otpCooldown > 0 ? '' : 'hover:animate-spin'}`} />
+                                        {otpCooldown > 0 ? `Resend Code in ${otpCooldown}s` : 'Resend Code'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex gap-4 pt-4">
                             {step > 1 && (
                                 <button type="button" onClick={prevStep} className="flex-1 py-4 px-6 border border-neutral-200 rounded-2xl text-sm font-bold text-neutral-500 bg-white hover:bg-neutral-50 transition-all">
                                     Back
                                 </button>
                             )}
-                            {step < 3 ? (
+                            {step < 4 ? (
                                 <button 
                                     type="button" 
                                     onClick={nextStep} 
-                                    disabled={(step === 1 && !isStep1Valid()) || (step === 2 && !isStep2Valid())}
+                                    disabled={(step === 1 && !isStep1Valid()) || (step === 2 && !isStep2Valid()) || (step === 3 && !isFormValid()) || loading}
                                     className="flex-[2] py-4 px-6 bg-primary text-white rounded-2xl text-sm font-black hover:bg-primary-dark transition-all disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2 shadow-xl shadow-primary/20"
                                 >
-                                    Continue
-                                    <CheckCircle2 className="w-4 h-4" />
+                                    {loading ? 'Processing...' : (step === 3 ? 'Get Verification Code' : 'Continue')}
+                                    {!loading && <CheckCircle2 className="w-4 h-4" />}
                                 </button>
                             ) : (
                                 <button 
                                     type="button" 
                                     onClick={handleSubmit}
-                                    disabled={loading || !isFormValid()}
+                                    disabled={loading || formData.otp.length < 6}
                                     className="flex-[2] py-4 px-6 bg-primary text-white rounded-2xl text-sm font-black hover:bg-primary-dark transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-xl shadow-primary/20"
                                 >
-                                    {loading ? 'Finalizing...' : 'Create Account'}
+                                    {loading ? 'Finalizing...' : 'Verify & Create Account'}
                                     {!loading && <CheckCircle2 className="w-4 h-4" />}
                                 </button>
                             )}
