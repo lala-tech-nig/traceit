@@ -28,7 +28,7 @@ const checkPendingActivations = async () => {
                 { activationReminderSentAt: null },
                 { activationReminderSentAt: { $lte: cooloff } },
             ],
-        }).select('firstName email hasPaid activationReminderSentAt');
+        }).select('firstName email hasPaid activationReminderSentAt createdAt');
 
         console.log(`[SCHEDULER] Activation check → ${users.length} user(s) eligible`);
 

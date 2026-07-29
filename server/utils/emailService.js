@@ -185,69 +185,96 @@ export const sendWelcomeEmail = async (user) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // 2. ACTIVATION REMINDER — sent 24h after registration if still not approved
 // ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Returns a natural, exact elapsed-time string since the user registered.
+ * - Under 48h  → "27 hours ago"
+ * - 2+ days    → "3 days ago"
+ */
+const timeSinceRegistration = (createdAt) => {
+    if (!createdAt) return 'over 24 hours ago';
+    const diffMs   = Date.now() - new Date(createdAt).getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHrs  = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 60)  return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+    if (diffHrs  < 48)  return `${diffHrs} hour${diffHrs  !== 1 ? 's' : ''} ago`;
+    return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+};
+
 export const sendActivationReminderEmail = async (user) => {
+    const elapsed = timeSinceRegistration(user.createdAt);
+
     const html = wrap(`
       <!-- Greeting -->
       <div style="text-align:center; margin-bottom:32px;">
-        <div style="font-size:52px; margin-bottom:12px;">⏳</div>
-        <h1 style="font-size:26px; font-weight:800; color:#f1f5f9; margin-bottom:10px;">
-          Hey ${user.firstName}, your account is pending activation!
+        <div style="font-size:52px; margin-bottom:16px;">⏳</div>
+        <h1 style="font-size:26px; font-weight:800; color:#f1f5f9; margin-bottom:12px; line-height:1.3;">
+          Still waiting to get started, ${user.firstName}?
         </h1>
-        <p style="color:#94a3b8; font-size:15px; line-height:1.7; max-width:440px; margin:0 auto;">
-          You registered on TraceIt over 24 hours ago but your platform is not yet active.
-          You're one step away from protecting your devices and unlocking your earning potential!
+        <p style="color:#94a3b8; font-size:15px; line-height:1.8; max-width:460px; margin:0 auto;">
+          You signed up on TraceIt <strong style="color:#e2e8f0;">${elapsed}</strong> and your account still isn't active.
+          It only takes a couple of minutes — let's get you sorted.
         </p>
       </div>
 
       <!-- Status Banner -->
-      <div style="background:linear-gradient(135deg,#451a03,#1c1917); border-radius:14px; padding:22px 24px; margin-bottom:28px; border:1px solid #92400e; text-align:center;">
-        <p style="color:#fde68a; font-size:13px; font-weight:700; letter-spacing:0.5px; margin-bottom:6px;">⚠️ ACTION REQUIRED</p>
-        <p style="color:#fef3c7; font-size:15px; line-height:1.7;">
+      <div style="background:linear-gradient(135deg,#3b1a00,#1c1412); border-radius:16px; padding:24px 28px; margin-bottom:28px; border:1px solid #92400e;">
+        <p style="color:#fbbf24; font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:8px;">⚠️ Your account needs attention</p>
+        <p style="color:#fef3c7; font-size:15px; line-height:1.8;">
           ${!user.hasPaid
-            ? 'You have not yet completed your <strong>platform activation payment</strong>. This is what keeps your account active and your devices protected.'
-            : 'Your payment was received! Our team is currently <strong>reviewing your account</strong>. Make sure your NIN and profile details are complete to speed up approval.'}
+            ? 'It looks like your <strong style="color:#fff;">activation payment</strong> hasn\'t come through yet. That\'s the one thing standing between you and full access — once done, we\'ll review your account right away.'
+            : 'Great news — your payment is confirmed! We\'re just waiting on your <strong style="color:#fff;">NIN verification</strong> to wrap things up. Log in and make sure everything is complete.'}
         </p>
       </div>
 
       <!-- What you're missing -->
-      <p style="color:#64748b; font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:16px;">What you're missing out on</p>
+      <p style="color:#475569; font-size:11px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; margin-bottom:14px;">Here's what's waiting for you</p>
       <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
         <tr>
-          ${card('🛡️', 'Device Protection', 'You can\'t register or protect your devices without an active account.')}
-          ${card('💰', 'Referral Earnings', 'Your referral commissions are locked until you activate.')}
+          ${card('🛡️', 'Device Protection', 'Register and protect all your gadgets once your account is live.')}
+          ${card('💰', 'Referral Earnings', 'Referral commissions are on hold until your account is approved.')}
         </tr>
         <tr>
-          ${card('🔍', 'Search Access', 'Full access to the national device database requires activation.')}
-          ${card('📋', 'Verificator Programme', 'You can\'t apply to become a paid verificator without approval.')}
+          ${card('🔍', 'Search Access', 'Look up any device on our national database — available after activation.')}
+          ${card('📋', 'Verificator Role', 'Earn money verifying users in your area. Requires an active account first.')}
         </tr>
       </table>
 
       <!-- Steps to activate -->
-      <div style="background:#0c1a2e; border-radius:14px; padding:24px; margin-bottom:28px; border:1px solid #1e40af;">
-        <p style="color:#60a5fa; font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:14px;">How to activate your account</p>
+      <div style="background:#0b1929; border-radius:16px; padding:26px 28px; margin-bottom:28px; border:1px solid #1e3a5f;">
+        <p style="color:#60a5fa; font-size:11px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; margin-bottom:16px;">3 quick steps to activate</p>
         <table width="100%" cellpadding="0" cellspacing="0">
           <tr><td style="padding:0 0 10px;">
-            <div style="background:#1e2535; border-radius:8px; padding:12px 16px; border-left:3px solid #6366f1;">
-              <p style="color:#e2e8f0; font-size:14px;"><strong style="color:#a5b4fc;">Step 1:</strong> Log in to your TraceIt dashboard</p>
+            <div style="background:#111f35; border-radius:10px; padding:14px 18px; border-left:3px solid #6366f1; display:flex; align-items:center;">
+              <p style="color:#e2e8f0; font-size:14px; line-height:1.6; margin:0;">
+                <strong style="color:#818cf8;">1 &nbsp;→&nbsp;</strong> Log in to your TraceIt dashboard
+              </p>
             </div>
           </td></tr>
           <tr><td style="padding:0 0 10px;">
-            <div style="background:#1e2535; border-radius:8px; padding:12px 16px; border-left:3px solid #8b5cf6;">
-              <p style="color:#e2e8f0; font-size:14px;"><strong style="color:#a5b4fc;">Step 2:</strong> Submit your NIN if you haven't already</p>
+            <div style="background:#111f35; border-radius:10px; padding:14px 18px; border-left:3px solid #a78bfa;">
+              <p style="color:#e2e8f0; font-size:14px; line-height:1.6; margin:0;">
+                <strong style="color:#c4b5fd;">2 &nbsp;→&nbsp;</strong> Upload your NIN if you haven't already
+              </p>
             </div>
           </td></tr>
           <tr><td>
-            <div style="background:#1e2535; border-radius:8px; padding:12px 16px; border-left:3px solid #06b6d4;">
-              <p style="color:#e2e8f0; font-size:14px;"><strong style="color:#a5b4fc;">Step 3:</strong> Complete your one-time activation payment to go live</p>
+            <div style="background:#111f35; border-radius:10px; padding:14px 18px; border-left:3px solid #22d3ee;">
+              <p style="color:#e2e8f0; font-size:14px; line-height:1.6; margin:0;">
+                <strong style="color:#67e8f9;">3 &nbsp;→&nbsp;</strong> Complete your one-time activation payment and you're live
+              </p>
             </div>
           </td></tr>
         </table>
       </div>
 
-      <div style="text-align:center;">
-        ${btn('✅ Activate My Account Now', `${APP_URL}/dashboard`, '#f59e0b')}
-        <p style="color:#4b5563; font-size:12px; margin-top:14px;">
-          Need help? Reply to this email or contact us at <a href="mailto:${process.env.EMAIL_USER}" style="color:#6366f1;">${process.env.EMAIL_USER}</a>
+      <div style="text-align:center; padding-bottom:4px;">
+        ${btn('✅ Complete My Activation', `${APP_URL}/dashboard`, '#f59e0b')}
+        <p style="color:#4b5563; font-size:12px; margin-top:16px; line-height:1.8;">
+          Got questions? Just reply to this email — we're real people and we'll get back to you.<br/>
+          Or reach us directly at <a href="mailto:${process.env.EMAIL_USER}" style="color:#6366f1;">${process.env.EMAIL_USER}</a>
         </p>
       </div>
     `);
@@ -255,7 +282,7 @@ export const sendActivationReminderEmail = async (user) => {
     await transporter.sendMail({
         from: FROM,
         to: user.email,
-        subject: `⏳ ${user.firstName}, your TraceIt account needs activation — complete it today!`,
+        subject: `${user.firstName}, you signed up ${elapsed} — let's finish your activation`,
         html,
     });
     console.log(`[EMAIL] Activation reminder sent → ${user.email}`);
