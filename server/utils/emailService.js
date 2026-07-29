@@ -4,7 +4,9 @@ dotenv.config();
 
 // ─── Transporter ─────────────────────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.EMAIL_HOST || 'mail.traceit.com.ng',
+    port: parseInt(process.env.EMAIL_PORT || '465', 10),
+    secure: process.env.EMAIL_SECURE !== 'false', // true for port 465 (SSL)
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
