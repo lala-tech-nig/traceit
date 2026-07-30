@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { sendBackupConfirmationEmail } from './emailService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -89,6 +90,13 @@ export const performDatabaseBackup = async (description = 'Automated 12:00 AM Ni
         console.log(` Collections : ${collections.length} collections saved`);
         console.log(` Description : ${description}`);
         console.log(`=============================================================\n`);
+
+        // Send confirmation email to admin
+        try {
+            await sendBackupConfirmationEmail(metadata);
+        } catch (emailErr) {
+            console.error('[DB BACKUP] Backup succeeded but confirmation email failed:', emailErr.message);
+        }
 
         return metadata;
     } catch (error) {

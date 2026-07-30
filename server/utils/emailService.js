@@ -466,3 +466,127 @@ export const sendAdminAlert = async (subject, details) => {
     console.log(`[EMAIL] Admin alert sent → ${ADMIN_EMAIL} | ${subject}`);
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 7. DB BACKUP CONFIRMATION — sent to admin after every successful backup
+// ═══════════════════════════════════════════════════════════════════════════════
+export const sendBackupConfirmationEmail = async (metadata) => {
+    const {
+        backupName,
+        nigeriaLocalTime,
+        description,
+        databaseName,
+        totalCollections,
+        collections = {},
+    } = metadata;
+
+    const totalDocuments = Object.values(collections).reduce((s, n) => s + n, 0);
+
+    const collectionRows = Object.entries(collections)
+        .map(([name, count]) => `
+          <tr>
+            <td style="padding:10px 18px; font-size:13px; color:#e2e8f0; border-bottom:1px solid #1e2535; font-family:monospace;">
+              📄 ${name}.json
+            </td>
+            <td style="padding:10px 18px; font-size:13px; color:#94a3b8; border-bottom:1px solid #1e2535; text-align:right; font-weight:700;">
+              ${count.toLocaleString()} records
+            </td>
+          </tr>`)
+        .join('');
+
+    const html = wrap(`
+      <!-- Header Icon & Title -->
+      <div style="text-align:center; margin-bottom:32px;">
+        <div style="font-size:56px; margin-bottom:14px;">🗄️</div>
+        <h1 style="font-size:26px; font-weight:800; color:#f1f5f9; margin-bottom:10px; line-height:1.3;">
+          Database Backup Successful ✅
+        </h1>
+        <p style="color:#94a3b8; font-size:15px; line-height:1.7; max-width:460px; margin:0 auto;">
+          A full snapshot of the <strong style="color:#e2e8f0;">${databaseName}</strong> database
+          has been saved successfully. All collections are intact and stored safely.
+        </p>
+      </div>
+
+      <!-- Timestamp & Description Banner -->
+      <div style="background:linear-gradient(135deg,#052e16,#0f172a); border-radius:14px; padding:22px 28px; margin-bottom:28px; border:1px solid #166534;">
+        <p style="color:#4ade80; font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:8px;">📅 Backup Details</p>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding:5px 0; color:#86efac; font-size:13px; width:140px;">Time (WAT)</td>
+            <td style="padding:5px 0; color:#ffffff; font-size:13px; font-weight:700;">${nigeriaLocalTime}</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0; color:#86efac; font-size:13px;">Backup Name</td>
+            <td style="padding:5px 0; color:#ffffff; font-size:13px; font-family:monospace;">${backupName}</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0; color:#86efac; font-size:13px;">Description</td>
+            <td style="padding:5px 0; color:#d1fae5; font-size:13px;">${description}</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0; color:#86efac; font-size:13px;">Database</td>
+            <td style="padding:5px 0; color:#ffffff; font-size:13px; font-family:monospace;">${databaseName}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Stats Row -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+        <tr>
+          <td width="50%" style="padding:0 8px 0 0;">
+            <div style="background:#1e2535; border-radius:14px; padding:22px; text-align:center; border:1px solid #334155;">
+              <div style="font-size:36px; font-weight:800; color:#6366f1; margin-bottom:4px;">${totalCollections}</div>
+              <div style="color:#94a3b8; font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Collections Backed Up</div>
+            </div>
+          </td>
+          <td width="50%" style="padding:0 0 0 8px;">
+            <div style="background:#1e2535; border-radius:14px; padding:22px; text-align:center; border:1px solid #334155;">
+              <div style="font-size:36px; font-weight:800; color:#22d3ee; margin-bottom:4px;">${totalDocuments.toLocaleString()}</div>
+              <div style="color:#94a3b8; font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Total Documents Saved</div>
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Collection Breakdown -->
+      <p style="color:#64748b; font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:12px;">📂 Collection Breakdown</p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:12px; overflow:hidden; border:1px solid #1e2535; margin-bottom:28px;">
+        <thead>
+          <tr style="background:#1a2035;">
+            <th style="padding:12px 18px; text-align:left; font-size:12px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid #1e2535;">File</th>
+            <th style="padding:12px 18px; text-align:right; font-size:12px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid #1e2535;">Records</th>
+          </tr>
+        </thead>
+        <tbody>${collectionRows}</tbody>
+      </table>
+
+      <!-- Storage location note -->
+      <div style="background:#111827; border-radius:12px; padding:18px 22px; margin-bottom:28px; border:1px solid #1e2535; border-left:4px solid #f59e0b;">
+        <p style="color:#fbbf24; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">📁 Stored On Server</p>
+        <p style="color:#94a3b8; font-size:13px; font-family:monospace; line-height:1.6;">
+          server/DB backup/${backupName}/
+        </p>
+        <p style="color:#64748b; font-size:12px; margin-top:8px; line-height:1.7;">
+          Each collection is saved as a separate <code style="color:#fbbf24;">.json</code> file alongside a
+          <code style="color:#fbbf24;">metadata.json</code> summary. To restore, run:
+          <code style="color:#86efac; display:block; margin-top:6px; background:#0d1117; padding:8px 12px; border-radius:6px;">npm run restore-db</code>
+        </p>
+      </div>
+
+      <!-- Footer note -->
+      <div style="text-align:center; padding-top:4px;">
+        <p style="color:#4b5563; font-size:12px; line-height:1.8;">
+          This is an automated system notification from TraceIt's backup scheduler.<br/>
+          No action is required unless you notice missing collections above.<br/>
+          Next backup: <strong style="color:#6366f1;">tomorrow at 12:00 AM Nigeria Time (WAT)</strong>
+        </p>
+      </div>
+    `);
+
+    await transporter.sendMail({
+        from: FROM,
+        to: ADMIN_EMAIL,
+        subject: `✅ [TraceIt DB Backup] ${databaseName} — ${totalCollections} collections, ${totalDocuments.toLocaleString()} documents — ${nigeriaLocalTime}`,
+        html,
+    });
+    console.log(`[EMAIL] DB backup confirmation sent → ${ADMIN_EMAIL}`);
+};
