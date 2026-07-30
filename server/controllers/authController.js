@@ -3,7 +3,7 @@ import generateToken from '../utils/generateToken.js';
 import Referral from '../models/Referral.js';
 import VerificationJob from '../models/VerificationJob.js';
 import OTP from '../models/OTP.js';
-import { sendWelcomeEmail, sendOtpEmail } from '../utils/emailService.js';
+import { sendWelcomeEmail, sendOtpEmail, sendAdminAlert } from '../utils/emailService.js';
 
 // Helper: assign a new verification job to the least-loaded available verificator
 const assignVerificationJob = async (newUserId) => {
@@ -100,7 +100,7 @@ export const registerUser = async (req, res) => {
 
         let imageUrl = null;
         if (req.file) {
-            imageUrl = `${req.protocol}://${req.get('host')}/upload/${req.file.filename}`;
+            imageUrl = req.file.path || req.file.secure_url || `${req.protocol}://${req.get('host')}/upload/${req.file.filename}`;
         }
 
         // Role specific logic
@@ -152,6 +152,16 @@ export const registerUser = async (req, res) => {
                 await user.save();
             }).catch(err => console.error('[EMAIL] Welcome email failed:', err.message));
         }
+
+        // Notify admin of new registration (non-blocking)
+        sendAdminAlert('New User Registered', {
+            'Full Name': `${user.firstName} ${user.lastName}`,
+            'Email': user.email,
+            'Phone': user.phoneNumber,
+            'Role': user.role,
+            'Address': user.homeAddress || '—',
+            'User ID': user._id.toString(),
+        }).catch(err => console.error('[EMAIL] Admin alert failed:', err.message));
 
         // Delete the used OTP
         await OTP.deleteMany({ email });

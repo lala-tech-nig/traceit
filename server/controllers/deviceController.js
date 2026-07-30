@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import Payment from '../models/Payment.js';
 import SearchLog from '../models/SearchLog.js';
 import Report from '../models/Report.js';
+import { sendAdminAlert } from '../utils/emailService.js';
 
 // @desc    Add a new device
 // @route   POST /api/devices
@@ -31,9 +32,9 @@ export const addDevice = async (req, res) => {
             }
         }
 
-        let deviceImage = '';
+        let deviceImage = null;
         if (req.file) {
-            deviceImage = `${req.protocol}://${req.get('host')}/upload/${req.file.filename}`;
+            deviceImage = req.file.path || req.file.secure_url || `${req.protocol}://${req.get('host')}/upload/${req.file.filename}`;
         }
 
         // Parse specs if it comes as a string (from FormData)
@@ -107,6 +108,17 @@ export const updateDeviceStatus = async (req, res) => {
         if (statusComment !== undefined) device.statusComment = statusComment;
 
         const updatedDevice = await device.save();
+
+        // Notify admin of device status change (non-blocking)
+        sendAdminAlert('Device Status Changed', {
+            'Device Name': device.name,
+            'Serial Number': device.serialNumber,
+            'New Status': status || device.status,
+            'Comment': statusComment || '—',
+            'Owner ID': req.user._id.toString(),
+            'Owner Email': req.user.email,
+        }).catch(err => console.error('[EMAIL] Admin alert failed:', err.message));
+
         res.json(updatedDevice);
     } catch (error) {
         res.status(500).json({ message: error.message });

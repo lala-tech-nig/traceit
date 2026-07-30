@@ -1,5 +1,6 @@
 import axios from 'axios';
 import User from '../models/User.js';
+import { sendAdminAlert } from '../utils/emailService.js';
 
 // @desc    Verify NIN using Everify API
 // @route   POST /api/nin/verify
@@ -69,6 +70,14 @@ export const verifyNIN = async (req, res) => {
                 user.nin = ninNumber;
                 user.ninVerified = true;
                 await user.save();
+
+                // Notify admin of identity verification (non-blocking)
+                sendAdminAlert('Identity Verification Request Completed', {
+                    'Full Name': `${user.firstName} ${user.lastName}`,
+                    'Email': user.email,
+                    'NIN': ninNumber,
+                    'User ID': user._id.toString(),
+                }).catch(err => console.error('[EMAIL] Admin alert failed:', err.message));
 
                 return res.status(200).json({
                     message: 'NIN Verified Successfully',

@@ -3,6 +3,7 @@ import WithdrawalRequest from '../models/WithdrawalRequest.js';
 import User from '../models/User.js';
 import ReferralSpend from '../models/ReferralSpend.js';
 import Payment from '../models/Payment.js';
+import { sendAdminAlert } from '../utils/emailService.js';
 
 // @desc    Get my referrals (users I referred)
 // @route   GET /api/referrals/my-referrals
@@ -123,6 +124,16 @@ export const requestWithdrawal = async (req, res) => {
             accountName,
             status: 'pending'
         });
+
+        // Notify admin of withdrawal request (non-blocking)
+        sendAdminAlert('Withdrawal Request Submitted', {
+            'User Email': req.user.email,
+            'User ID': req.user._id.toString(),
+            'Amount Requested': `₦${amount.toLocaleString()}`,
+            'Bank Name': bankName,
+            'Account Name': accountName,
+            'Account Number': accountNumber,
+        }).catch(err => console.error('[EMAIL] Admin alert failed:', err.message));
 
         res.status(201).json({ message: 'Withdrawal request submitted successfully.', withdrawal });
     } catch (error) {

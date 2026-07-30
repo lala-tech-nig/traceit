@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #FF6600;
+  --color-primary-dark: #cc5200;
+  --color-foreground: #111111;
+  --color-background: #ffffff;
+  --font-geist-sans: 'Inter', sans-serif;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer utilities {
+  .text-foreground { color: var(--color-foreground); }
+  .bg-primary { background-color: var(--color-primary); }
+  .bg-primary-dark { background-color: var(--color-primary-dark); }
+  .text-primary { color: var(--color-primary); }
+  .hover\:bg-primary-dark:hover { background-color: var(--color-primary-dark); }
+  .border-primary { border-color: var(--color-primary); }
+  .focus\:border-primary:focus { border-color: var(--color-primary); }
+  .focus\:ring-primary:focus { --tw-ring-color: var(--color-primary); }
+  .shadow-primary\/20 { --tw-shadow-color: rgb(255 102 0 / 0.2); }
+  .shadow-primary\/25 { --tw-shadow-color: rgb(255 102 0 / 0.25); }
+  .ring-primary\/10 { --tw-ring-color: rgb(255 102 0 / 0.1); }
+  .bg-primary\/5 { background-color: rgb(255 102 0 / 0.05); }
+  .bg-primary\/10 { background-color: rgb(255 102 0 / 0.1); }
+  .bg-primary\/20 { background-color: rgb(255 102 0 / 0.2); }
+  .bg-primary\/40 { background-color: rgb(255 102 0 / 0.4); }
+  .text-primary\/20 { color: rgb(255 102 0 / 0.2); }
+  .border-primary\/10 { border-color: rgb(255 102 0 / 0.1); }
+  .border-primary\/30 { border-color: rgb(255 102 0 / 0.3); }
+  .border-primary\/50 { border-color: rgb(255 102 0 / 0.5); }
+  .from-primary\/10 { --tw-gradient-from: rgb(255 102 0 / 0.1); }
+  .to-primary\/10 { --tw-gradient-to: rgb(255 102 0 / 0.1); }
+  .hover\:text-primary:hover { color: var(--color-primary); }
+  .hover\:border-primary:hover { border-color: var(--color-primary); }
+  .hover\:text-primary-dark:hover { color: var(--color-primary-dark); }
+  .focus\:ring-primary\/10:focus { --tw-ring-color: rgb(255 102 0 / 0.1); }
+}

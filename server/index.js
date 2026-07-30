@@ -20,6 +20,7 @@ import analyticsRoutes from './routes/analyticsRoutes.js';
 import referralRoutes from './routes/referralRoutes.js';
 import verificatorRoutes from './routes/verificatorRoutes.js';
 import { startEmailScheduler } from './utils/emailScheduler.js';
+import { startBackupScheduler } from './utils/dbBackupService.js';
 
 dotenv.config();
 
@@ -51,8 +52,9 @@ const startServer = async () => {
     try {
         await connectDB();
         
-        // Start automated email scheduler
+        // Start automated email scheduler & automated daily 12 AM Nigeria time DB backup scheduler
         startEmailScheduler();
+        startBackupScheduler();
 
         const PORT = process.env.PORT || 5000;
         app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { normalizeImageUrl } from '../utils/imageUrlHelper.js';
 
 const deviceSchema = new mongoose.Schema({
     name: { type: String, required: true },
@@ -10,7 +11,7 @@ const deviceSchema = new mongoose.Schema({
     category: { type: String, required: true },
     specs: { type: Object, default: {} },
     currentOwner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    deviceImage: { type: String },
+    deviceImage: { type: String, get: normalizeImageUrl },
     history: [{
         previousOwner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         newOwner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -25,7 +26,9 @@ const deviceSchema = new mongoose.Schema({
     status: { type: String, enum: ['clean', 'stolen', 'lost'], default: 'clean' },
     statusComment: { type: String, default: '' }
 }, {
-    timestamps: true
+    timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true }
 });
 
 const Device = mongoose.model('Device', deviceSchema);

@@ -2,6 +2,7 @@ import Payment from '../models/Payment.js';
 import User from '../models/User.js';
 import WithdrawalRequest from '../models/WithdrawalRequest.js';
 import axios from 'axios';
+import { sendAdminAlert } from '../utils/emailService.js';
 
 // @desc    Verify payment
 // @route   POST /api/payments/verify
@@ -42,6 +43,15 @@ export const verifyPayment = async (req, res) => {
             status: 'success',
             reference
         });
+
+        // Notify admin of successful payment (non-blocking)
+        sendAdminAlert('Successful Payment Received', {
+            'User Email': req.user.email,
+            'User ID': req.user._id.toString(),
+            'Amount': `₦${amount.toLocaleString()}`,
+            'Payment Type': type,
+            'Reference': reference,
+        }).catch(err => console.error('[EMAIL] Admin alert failed:', err.message));
 
         // Handle specific logic based on type
         const user = await User.findById(req.user._id);

@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "restore-db": "node restore_db.js",
+    "backup-db": "node -e \"import('dotenv').then(d => d.default.config()).then(() => import('./config/db.js')).then(db => db.default()).then(() => import('./utils/dbBackupService.js')).then(m => m.performDatabaseBackup('Manual On-Demand Backup')).then(() => process.exit(0));\""
   },
   "keywords": [],
   "author": "LALA TECH",

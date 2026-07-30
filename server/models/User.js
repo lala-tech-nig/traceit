@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { normalizeImageUrl } from '../utils/imageUrlHelper.js';
 
 const userSchema = new mongoose.Schema({
     firstName: { type: String, required: true },
@@ -15,7 +16,7 @@ const userSchema = new mongoose.Schema({
     nin: { type: String, default: '' },
     ninVerified: { type: Boolean, default: false },
     hasPaid: { type: Boolean, default: false },
-    image: { type: String, default: null },
+    image: { type: String, default: null, get: normalizeImageUrl },
     parentVendor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     transferCount: { type: Number, default: 0 },
@@ -40,7 +41,9 @@ const userSchema = new mongoose.Schema({
     activationReminderSentAt: { type: Date, default: null },
     reEngagementSentAt: { type: Date, default: null }
 }, {
-    timestamps: true
+    timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true }
 });
 
 userSchema.pre('save', async function () {

@@ -419,3 +419,50 @@ export const sendOtpEmail = async (email, otp, firstName) => {
     });
     console.log(`[EMAIL] OTP email sent → ${email}`);
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 6. ADMIN ALERT EMAIL — sent to platform owner for key platform events
+// ═══════════════════════════════════════════════════════════════════════════════
+const ADMIN_EMAIL = 'lalatechnigltd@gmail.com';
+
+export const sendAdminAlert = async (subject, details) => {
+    const now = new Date().toLocaleString('en-NG', { timeZone: 'Africa/Lagos', dateStyle: 'full', timeStyle: 'medium' });
+
+    const rows = Object.entries(details)
+        .map(([key, val]) => `
+          <tr>
+            <td style="padding:10px 16px; font-size:13px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap; border-bottom:1px solid #1e2535;">${key}</td>
+            <td style="padding:10px 16px; font-size:14px; color:#e2e8f0; border-bottom:1px solid #1e2535; word-break:break-word;">${val ?? '—'}</td>
+          </tr>`)
+        .join('');
+
+    const html = wrap(`
+      <div style="text-align:center; margin-bottom:28px;">
+        <div style="font-size:48px; margin-bottom:12px;">🔔</div>
+        <h1 style="font-size:22px; font-weight:800; color:#f1f5f9; margin-bottom:8px;">Admin Alert</h1>
+        <p style="color:#94a3b8; font-size:14px;">${now}</p>
+      </div>
+
+      <div style="background:linear-gradient(135deg,#1e1b4b,#0f172a); border-radius:14px; padding:18px 22px; margin-bottom:24px; border:1px solid #4338ca;">
+        <p style="color:#a5b4fc; font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px;">Event</p>
+        <p style="color:#e2e8f0; font-size:16px; font-weight:800;">${subject}</p>
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:12px; overflow:hidden; border:1px solid #1e2535; margin-bottom:24px;">
+        <tbody>${rows}</tbody>
+      </table>
+
+      <div style="text-align:center; padding-top:8px;">
+        ${btn('🔑 Open Admin Panel', `${APP_URL}/admin`, '#6366f1')}
+      </div>
+    `);
+
+    await transporter.sendMail({
+        from: FROM,
+        to: ADMIN_EMAIL,
+        subject: `[TraceIt Alert] ${subject}`,
+        html,
+    });
+    console.log(`[EMAIL] Admin alert sent → ${ADMIN_EMAIL} | ${subject}`);
+};
+
