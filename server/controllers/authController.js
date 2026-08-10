@@ -1,0 +1,319 @@
+import User from '../models/User.js';
+import generateToken from '../utils/generateToken.js';
+import Referral from '../models/Referral.js';
+import VerificationJob from '../models/VerificationJob.js';
+import OTP from '../models/OTP.js';
+import { sendWelcomeEmail, sendOtpEmail, sendAdminAlert } from '../utils/emailService.js';
+
+// Helper: assign a new verification job to the least-loaded available verificator
+const assignVerificationJob = async (newUserId) => {
+    try {
+        // Find all verificators
+        const verificators = await User.find({ role: 'verificator' });
+        if (!verificators.length) return;
+
+        // Find the one with fewest pending jobs
+        const jobCounts = await Promise.all(
+            verificators.map(async (v) => {
+                const count = await VerificationJob.countDocuments({
+                    verificator: v._id,
+                    status: { $in: ['pending', 'accepted'] }
+                });
+                return { verificator: v._id, count };
+            })
+        );
+
+        jobCounts.sort((a, b) => a.count - b.count);
+        const assignedVerificatorId = jobCounts[0].verificator;
+
+        await VerificationJob.create({
+            verificator: assignedVerificatorId,
+            targetUser: newUserId,
+            status: 'pending'
+        });
+    } catch (err) {
+        console.error('Failed to assign verification job:', err.message);
+    }
+};
+
+// @desc    Send OTP to user email
+// @route   POST /api/auth/send-otp
+// @access  Public
+export const sendRegistrationOTP = async (req, res) => {
+    try {
+        const { email, firstName } = req.body;
+        if (!email) {
+            return res.status(400).json({ message: 'Email is required' });
+        }
+
+        const lowerEmail = email.toLowerCase().trim();
+
+        // Check if user already exists
+        const userExists = await User.findOne({ email: lowerEmail });
+        if (userExists) {
+            return res.status(400).json({ message: 'An account with this email address already exists. Please log in instead.' });
+        }
+
+        // Generate 6 digit OTP
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // Delete existing OTPs for this email to avoid duplicates
+        await OTP.deleteMany({ email: lowerEmail });
+
+        // Save new OTP
+        await OTP.create({
+            email: lowerEmail,
+            otp: otpCode
+        });
+
+        // Send OTP via email
+        await sendOtpEmail(lowerEmail, otpCode, firstName);
+
+        res.status(200).json({ message: 'OTP sent successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Register a new user
+// @route   POST /api/auth/register
+// @access  Public
+export const registerUser = async (req, res) => {
+    try {
+        const { firstName, lastName, phoneNumber, homeAddress, email: rawEmail, password, role, mainVendorId, referralEmail, otp } = req.body;
+        const email = rawEmail?.toLowerCase();
+
+        const userExists = await User.findOne({ email });
+
+        if (userExists) {
+            return res.status(400).json({ message: 'An account with this email address already exists. Please log in instead.' });
+        }
+
+        if (!otp) {
+            return res.status(400).json({ message: 'OTP is required to register.' });
+        }
+
+        const validOtp = await OTP.findOne({ email, otp });
+        if (!validOtp) {
+            return res.status(400).json({ message: 'Invalid or expired OTP. Please request a new one.' });
+        }
+
+        let imageUrl = null;
+        if (req.file) {
+            imageUrl = req.file.path || req.file.secure_url || `${req.protocol}://${req.get('host')}/upload/${req.file.filename}`;
+        }
+
+        // Role specific logic
+        let parentVendor = null;
+        if (role === 'substore') {
+            if (!mainVendorId) return res.status(400).json({ message: 'Main vendor must be specified for sub-stores' });
+            parentVendor = mainVendorId;
+        }
+
+        // Referral lookup
+        let referredBy = null;
+        if (referralEmail && referralEmail.trim()) {
+            const referrer = await User.findOne({ email: referralEmail.trim().toLowerCase() });
+            if (referrer) {
+                referredBy = referrer._id;
+            }
+        }
+
+        const user = await User.create({
+            firstName,
+            lastName,
+            phoneNumber,
+            homeAddress: homeAddress || '',
+            email,
+            password,
+            role: role || 'basic',
+            image: imageUrl,
+            parentVendor,
+            referredBy
+        });
+
+        // Create a pending referral record if someone referred this user
+        if (referredBy) {
+            await Referral.create({
+                referrer: referredBy,
+                referred: user._id,
+                commissionAmount: 100,
+                status: 'pending'
+            });
+        }
+
+        // Auto-assign a physical verification job to a verificator
+        await assignVerificationJob(user._id);
+
+        // Send welcome email asynchronously (non-blocking)
+        if (user.welcomeEmailSentAt === null || user.welcomeEmailSentAt === undefined) {
+            sendWelcomeEmail(user).then(async () => {
+                user.welcomeEmailSentAt = new Date();
+                await user.save();
+            }).catch(err => console.error('[EMAIL] Welcome email failed:', err.message));
+        }
+
+        // Notify admin of new registration (non-blocking)
+        sendAdminAlert('New User Registered', {
+            'Full Name': `${user.firstName} ${user.lastName}`,
+            'Email': user.email,
+            'Phone': user.phoneNumber,
+            'Role': user.role,
+            'Address': user.homeAddress || '—',
+            'User ID': user._id.toString(),
+        }).catch(err => console.error('[EMAIL] Admin alert failed:', err.message));
+
+        // Delete the used OTP
+        await OTP.deleteMany({ email });
+
+        if (user) {
+            res.status(201).json({
+                _id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                phoneNumber: user.phoneNumber,
+                homeAddress: user.homeAddress,
+                email: user.email,
+                role: user.role,
+                image: user.image,
+                ninVerified: user.ninVerified,
+                isApproved: user.isApproved,
+                hasPaid: user.hasPaid,
+                token: generateToken(user._id),
+            });
+        } else {
+            res.status(400).json({ message: 'Invalid user data' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Auth user & get token
+// @route   POST /api/auth/login
+// @access  Public
+export const loginUser = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const lowerEmail = email?.toLowerCase();
+
+        const user = await User.findOne({ email: lowerEmail });
+
+        if (user && (await user.matchPassword(password))) {
+            if (user.isSuspended) {
+                return res.status(403).json({
+                    message: 'Your account has been restricted, reach out to the support whatsapp line.',
+                    isSuspended: true,
+                    email: user.email
+                });
+            }
+
+            // Stamp last login time for re-engagement scheduler
+            user.lastLoginAt = new Date();
+            await user.save();
+
+            res.json({
+                _id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                phoneNumber: user.phoneNumber,
+                homeAddress: user.homeAddress,
+                email: user.email,
+                role: user.role,
+                image: user.image,
+                nin: user.nin,
+                ninVerified: user.ninVerified,
+                isApproved: user.isApproved,
+                hasPaid: user.hasPaid,
+                token: generateToken(user._id),
+            });
+        } else {
+            res.status(401).json({ message: 'Invalid email or password' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get user profile
+// @route   GET /api/auth/profile
+// @access  Private
+export const getUserProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+
+        if (user) {
+            res.json({
+                _id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                phoneNumber: user.phoneNumber,
+                homeAddress: user.homeAddress,
+                email: user.email,
+                role: user.role,
+                image: user.image,
+                nin: user.nin,
+                ninVerified: user.ninVerified,
+                isApproved: user.isApproved,
+                hasPaid: user.hasPaid
+            });
+        } else {
+            res.status(404).json({ message: 'User not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Verify user by email
+// @route   GET /api/auth/verify-user
+// @access  Private
+export const verifyUserEmail = async (req, res) => {
+    try {
+        const { email } = req.query;
+        const lowerEmail = email?.toLowerCase();
+        const user = await User.findOne({ email: lowerEmail });
+        if (user) {
+            res.json({ firstName: user.firstName, lastName: user.lastName, email: user.email });
+        } else {
+            res.status(404).json({ message: 'Account with this email does not exist on the platform' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Apply to be a verificator
+// @route   POST /api/auth/apply-verificator
+// @access  Private (Basic/Technician only)
+export const applyVerificator = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        if (!['basic', 'technician'].includes(user.role)) {
+            return res.status(403).json({ message: 'Only Basic and Technician users can apply to be a Verificator' });
+        }
+
+        if (!user.isApproved) {
+            return res.status(400).json({ message: 'You must be a verified user to apply' });
+        }
+
+        if (user.verificatorStatus !== 'none' && user.verificatorStatus !== 'rejected') {
+            return res.status(400).json({ message: `Application is already ${user.verificatorStatus}` });
+        }
+
+        user.verificatorStatus = 'pending';
+        if (req.body.areaOfFocus) {
+            user.verificatorAreaOfFocus = req.body.areaOfFocus;
+        }
+        await user.save();
+
+        res.json({ message: 'Application submitted successfully', verificatorStatus: user.verificatorStatus });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

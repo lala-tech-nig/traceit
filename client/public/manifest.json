@@ -1,0 +1,21 @@
+{
+  "name": "TraceIt Gadget Registry",
+  "short_name": "TraceIt",
+  "description": "Secure, track, and manage your devices with TraceIt's universal registry.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f43f5e",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
