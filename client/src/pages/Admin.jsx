@@ -1,4 +1,4 @@
-
+﻿
 import { useAuth } from '@/context/AuthContext';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
@@ -43,7 +43,13 @@ import {
     AlertTriangle,
     CheckCheck,
     Eye,
-    Zap
+    Zap,
+    Building2,
+    Sparkles,
+    HelpCircle,
+    Star,
+    Plus,
+    FolderPlus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
@@ -105,7 +111,49 @@ export default function Admin() {
     const [selectedUser, setSelectedUser] = useState(null);
     const [showUserModal, setShowUserModal] = useState(false);
 
-    // ── Email Centre State ─────────────────────────────────────────────────────
+    // â”€â”€ Merchants Management State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const [merchantsList, setMerchantsList] = useState([]);
+    const [merchantsLoading, setMerchantsLoading] = useState(false);
+    const [showMerchantModal, setShowMerchantModal] = useState(false);
+    const [editingMerchantId, setEditingMerchantId] = useState(null);
+    const [merchantForm, setMerchantForm] = useState({
+        name: '', logoUrl: '', location: 'Computer Village, Ikeja, Lagos', category: 'Mobile Retailer & Authorized Dealer',
+        starRating: 5, dateJoined: new Date().toISOString().split('T')[0], phone: '', email: '', website: '', description: '', logoFile: null
+    });
+
+    // â”€â”€ Influencers Management State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const [influencersList, setInfluencersList] = useState([]);
+    const [influencersLoading, setInfluencersLoading] = useState(false);
+    const [showInfluencerModal, setShowInfluencerModal] = useState(false);
+    const [editingInfluencerId, setEditingInfluencerId] = useState(null);
+    const [influencerForm, setInfluencerForm] = useState({
+        name: '', photoUrl: '', role: 'Brand Ambassador', handle: '@traceit_ng', platform: 'Instagram', socialUrl: '', quote: '', starRating: 5, dateJoined: new Date().toISOString().split('T')[0], photoFile: null
+    });
+
+    // â”€â”€ FAQ Directory Management State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const [faqsList, setFaqsList] = useState([]);
+    const [faqsLoading, setFaqsLoading] = useState(false);
+    const [showFaqModal, setShowFaqModal] = useState(false);
+    const [editingFaqId, setEditingFaqId] = useState(null);
+    const [faqForm, setFaqForm] = useState({
+        question: '', answer: '', category: 'General', order: 0, isPublished: true
+    });
+
+    // â”€â”€ Platform Content Overview State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const [contentList, setContentList] = useState({ features: [], howItWorks: [], forWho: [] });
+    const [contentLoading, setContentLoading] = useState(false);
+    const [showContentModal, setShowContentModal] = useState(false);
+    const [editingContentId, setEditingContentId] = useState(null);
+    const [contentForm, setContentForm] = useState({
+        section: 'features', title: '', subtitle: '', icon: 'ShieldCheck', description: '', badge: '', order: 0
+    });
+
+    // â”€â”€ Unverifiable NIN Reach-Out Modal State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const [showNinUnverifiableModal, setShowNinUnverifiableModal] = useState(false);
+    const [ninUnverifiableUserId, setNinUnverifiableUserId] = useState(null);
+    const [ninUnverifiableReason, setNinUnverifiableReason] = useState('');
+
+    // â”€â”€ Email Centre State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const [emailTarget, setEmailTarget]           = useState('pending');
     const [emailMode, setEmailMode]               = useState('template'); // 'template' | 'custom'
     const [emailMsgType, setEmailMsgType]         = useState('activation');
@@ -338,6 +386,10 @@ export default function Admin() {
         if (activeTab === 'analytics' && user) fetchAnalytics();
         if (activeTab === 'verificators' && user) fetchVerificators();
         if (activeTab === 'withdrawals' && user) fetchWithdrawals();
+        if (activeTab === 'merchants' && user) fetchAdminMerchants();
+        if (activeTab === 'influencers' && user) fetchAdminInfluencers();
+        if (activeTab === 'faqs' && user) fetchAdminFAQs();
+        if (activeTab === 'content' && user) fetchAdminContent();
     }, [activeTab, sortConfig, filterRole, filterStatus]);
 
     const fetchWithdrawals = async () => {
@@ -365,6 +417,267 @@ export default function Admin() {
             fetchWithdrawals();
         } catch (error) {
             setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to process withdrawal' });
+        } finally {
+            setProcessLoading(null);
+        }
+    };
+
+    // â”€â”€ Merchants Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const fetchAdminMerchants = async () => {
+        setMerchantsLoading(true);
+        try {
+            const res = await axios.get(`${API_URL}/merchants`);
+            setMerchantsList(res.data);
+        } catch (err) {
+            console.error('Failed to fetch merchants:', err);
+        } finally {
+            setMerchantsLoading(false);
+        }
+    };
+
+    const handleSaveMerchant = async (e) => {
+        e.preventDefault();
+        setProcessLoading('save_merchant');
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'multipart/form-data' } };
+            const formData = new FormData();
+            formData.append('name', merchantForm.name);
+            formData.append('dateJoined', merchantForm.dateJoined);
+            formData.append('starRating', merchantForm.starRating);
+            formData.append('location', merchantForm.location);
+            formData.append('category', merchantForm.category);
+            formData.append('phone', merchantForm.phone);
+            formData.append('email', merchantForm.email);
+            formData.append('website', merchantForm.website);
+            formData.append('description', merchantForm.description);
+            if (merchantForm.logoFile) {
+                formData.append('logo', merchantForm.logoFile);
+            } else if (merchantForm.logoUrl) {
+                formData.append('logoUrl', merchantForm.logoUrl);
+            }
+
+            if (editingMerchantId) {
+                await axios.put(`${API_URL}/merchants/${editingMerchantId}`, formData, config);
+                setMessage({ type: 'success', text: 'Merchant details updated successfully!' });
+            } else {
+                await axios.post(`${API_URL}/merchants`, formData, config);
+                setMessage({ type: 'success', text: 'Merchant created successfully!' });
+            }
+            setShowMerchantModal(false);
+            fetchAdminMerchants();
+        } catch (err) {
+            setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to save merchant' });
+        } finally {
+            setProcessLoading(null);
+        }
+    };
+
+    const handleDeleteMerchant = async (id) => {
+        if (!window.confirm('Delete this merchant listing?')) return;
+        setProcessLoading(id);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.delete(`${API_URL}/merchants/${id}`, config);
+            setMessage({ type: 'success', text: 'Merchant deleted' });
+            fetchAdminMerchants();
+        } catch (err) {
+            setMessage({ type: 'error', text: err.response?.data?.message || 'Delete failed' });
+        } finally {
+            setProcessLoading(null);
+        }
+    };
+
+    // â”€â”€ Influencers Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const fetchAdminInfluencers = async () => {
+        setInfluencersLoading(true);
+        try {
+            const res = await axios.get(`${API_URL}/influencers`);
+            setInfluencersList(res.data);
+        } catch (err) {
+            console.error('Failed to fetch influencers:', err);
+        } finally {
+            setInfluencersLoading(false);
+        }
+    };
+
+    const handleSaveInfluencer = async (e) => {
+        e.preventDefault();
+        setProcessLoading('save_influencer');
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'multipart/form-data' } };
+            const formData = new FormData();
+            formData.append('name', influencerForm.name);
+            formData.append('role', influencerForm.role);
+            formData.append('handle', influencerForm.handle);
+            formData.append('platform', influencerForm.platform);
+            formData.append('socialUrl', influencerForm.socialUrl);
+            formData.append('quote', influencerForm.quote);
+            formData.append('starRating', influencerForm.starRating);
+            formData.append('dateJoined', influencerForm.dateJoined);
+            if (influencerForm.photoFile) {
+                formData.append('photo', influencerForm.photoFile);
+            } else if (influencerForm.photoUrl) {
+                formData.append('photoUrl', influencerForm.photoUrl);
+            }
+
+            if (editingInfluencerId) {
+                await axios.put(`${API_URL}/influencers/${editingInfluencerId}`, formData, config);
+                setMessage({ type: 'success', text: 'Influencer details updated successfully!' });
+            } else {
+                await axios.post(`${API_URL}/influencers`, formData, config);
+                setMessage({ type: 'success', text: 'Influencer created successfully!' });
+            }
+            setShowInfluencerModal(false);
+            fetchAdminInfluencers();
+        } catch (err) {
+            setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to save influencer' });
+        } finally {
+            setProcessLoading(null);
+        }
+    };
+
+    const handleDeleteInfluencer = async (id) => {
+        if (!window.confirm('Delete this brand ambassador?')) return;
+        setProcessLoading(id);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.delete(`${API_URL}/influencers/${id}`, config);
+            setMessage({ type: 'success', text: 'Influencer deleted' });
+            fetchAdminInfluencers();
+        } catch (err) {
+            setMessage({ type: 'error', text: err.response?.data?.message || 'Delete failed' });
+        } finally {
+            setProcessLoading(null);
+        }
+    };
+
+    // â”€â”€ FAQ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const fetchAdminFAQs = async () => {
+        setFaqsLoading(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            const res = await axios.get(`${API_URL}/faqs/admin/all`, config);
+            setFaqsList(res.data);
+        } catch (err) {
+            console.error('Failed to fetch FAQs:', err);
+        } finally {
+            setFaqsLoading(false);
+        }
+    };
+
+    const handleSaveFAQ = async (e) => {
+        e.preventDefault();
+        setProcessLoading('save_faq');
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            if (editingFaqId) {
+                await axios.put(`${API_URL}/faqs/${editingFaqId}`, faqForm, config);
+                setMessage({ type: 'success', text: 'FAQ item updated!' });
+            } else {
+                await axios.post(`${API_URL}/faqs`, faqForm, config);
+                setMessage({ type: 'success', text: 'FAQ item created!' });
+            }
+            setShowFaqModal(false);
+            fetchAdminFAQs();
+        } catch (err) {
+            setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to save FAQ' });
+        } finally {
+            setProcessLoading(null);
+        }
+    };
+
+    const handleDeleteFAQ = async (id) => {
+        if (!window.confirm('Delete this FAQ item?')) return;
+        setProcessLoading(id);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.delete(`${API_URL}/faqs/${id}`, config);
+            setMessage({ type: 'success', text: 'FAQ deleted' });
+            fetchAdminFAQs();
+        } catch (err) {
+            setMessage({ type: 'error', text: err.response?.data?.message || 'Delete failed' });
+        } finally {
+            setProcessLoading(null);
+        }
+    };
+
+    // â”€â”€ Content Overview Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const fetchAdminContent = async () => {
+        setContentLoading(true);
+        try {
+            const res = await axios.get(`${API_URL}/content/overview`);
+            setContentList(res.data);
+        } catch (err) {
+            console.error('Failed to fetch content overview:', err);
+        } finally {
+            setContentLoading(false);
+        }
+    };
+
+    const handleSaveContent = async (e) => {
+        e.preventDefault();
+        setProcessLoading('save_content');
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            if (editingContentId) {
+                await axios.put(`${API_URL}/content/overview/${editingContentId}`, contentForm, config);
+                setMessage({ type: 'success', text: 'Overview item updated!' });
+            } else {
+                await axios.post(`${API_URL}/content/overview`, contentForm, config);
+                setMessage({ type: 'success', text: 'Overview item created!' });
+            }
+            setShowContentModal(false);
+            fetchAdminContent();
+        } catch (err) {
+            setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to save content item' });
+        } finally {
+            setProcessLoading(null);
+        }
+    };
+
+    const handleDeleteContent = async (id) => {
+        if (!window.confirm('Delete this content item?')) return;
+        setProcessLoading(id);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.delete(`${API_URL}/content/overview/${id}`, config);
+            setMessage({ type: 'success', text: 'Item deleted' });
+            fetchAdminContent();
+        } catch (err) {
+            setMessage({ type: 'error', text: err.response?.data?.message || 'Delete failed' });
+        } finally {
+            setProcessLoading(null);
+        }
+    };
+
+    const handleApproveUser = async (id) => {
+        setProcessLoading(id);
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.put(`${API_URL}/admin/approve/${id}`, {}, config);
+            setMessage({ type: 'success', text: 'User approved and NIN verified!' });
+            fetchData();
+        } catch (err) {
+            setMessage({ type: 'error', text: err.response?.data?.message || 'Approval failed' });
+        } finally {
+            setProcessLoading(null);
+        }
+    };
+
+    const handleReachOutUnverifiable = async (e) => {
+        e.preventDefault();
+        setProcessLoading('unverifiable_nin');
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            const res = await axios.post(`${API_URL}/admin/users/${ninUnverifiableUserId}/nin-unverifiable`, {
+                reasonNotes: ninUnverifiableReason
+            }, config);
+            setMessage({ type: 'success', text: res.data.message });
+            setShowNinUnverifiableModal(false);
+            setNinUnverifiableReason('');
+            fetchData();
+        } catch (err) {
+            setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to send notification email' });
         } finally {
             setProcessLoading(null);
         }
@@ -474,20 +787,7 @@ export default function Admin() {
         }
     };
 
-    const handleApprove = async (id) => {
-        setProcessLoading(id);
-        try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.put(`${API_URL}/admin/approve/${id}`, {}, config);
-            setMessage({ type: 'success', text: 'User approved successfully!' });
-            fetchData();
-            if (activeTab === 'accounts') fetchAllUsers();
-        } catch (error) {
-            setMessage({ type: 'error', text: 'Failed to approve user' });
-        } finally {
-            setProcessLoading(null);
-        }
-    };
+    // handleApprove unified into handleApproveUser above
 
 
 
@@ -498,7 +798,7 @@ export default function Admin() {
         }));
     };
 
-    // ── Email Centre ───────────────────────────────────────────────────────────
+    // â”€â”€ Email Centre â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const handleSendBulkEmail = async (e) => {
         e.preventDefault();
         
@@ -537,6 +837,10 @@ export default function Admin() {
         { id: 'overview',   label: 'Platform Overview',     icon: LayoutDashboard },
         { id: 'accounts',   label: 'All Accounts',          icon: Users },
         { id: 'approvals',  label: `Approvals (${pendingUsers.length})`, icon: Clock },
+        { id: 'merchants',  label: 'Registered Merchants',  icon: Building2 },
+        { id: 'influencers',label: 'Influencers & Ambassadors', icon: Sparkles },
+        { id: 'faqs',       label: 'FAQ Directory',         icon: HelpCircle },
+        { id: 'content',    label: 'Overview Content',      icon: Zap },
         { id: 'reports',    label: 'Device Reports',        icon: ShieldAlert },
         { id: 'verificators',label: 'Field Agents / Verificators', icon: CheckCircle },
         { id: 'withdrawals',label: 'Withdrawal Requests',   icon: ArrowLeftRight },
@@ -549,7 +853,7 @@ export default function Admin() {
     return (
         <div className="flex min-h-screen bg-neutral-100 font-[family-name:var(--font-geist-sans)]">
 
-            {/* ── Sidebar ───────────────────────────────────────────── */}
+            {/* â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <aside className="w-64 shrink-0 bg-[#0f0f11] text-white flex flex-col sticky top-0 h-screen overflow-y-auto">
                 {/* Logo */}
                 <div className="px-7 pt-8 pb-6 border-b border-white/10">
@@ -594,7 +898,7 @@ export default function Admin() {
                 </div>
             </aside>
 
-            {/* ── Main Content ─────────────────────────────────────── */}
+            {/* â”€â”€ Main Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
 
                 {/* Sticky Header */}
@@ -632,7 +936,7 @@ export default function Admin() {
                         <StatCard icon={Users} label="Total Accounts" value={stats?.totalUsers} trend={`${stats?.newAccountsToday} today`} color="blue" />
                         <StatCard icon={Smartphone} label="Registered Devices" value={stats?.totalDevices} trend={`${stats?.devicesToday} today`} color="indigo" />
                         <StatCard icon={Fingerprint} label="Verified Identity" value={stats?.verifiedAccounts} trend="NIN Verified" color="purple" />
-                        <StatCard icon={CreditCard} label="Revenue Today" value={`₦${stats?.dailyRevenue.toLocaleString()}`} trend={`₦${stats?.weeklyRevenue.toLocaleString()} this week`} color="amber" />
+                        <StatCard icon={CreditCard} label="Revenue Today" value={`â‚¦${stats?.dailyRevenue.toLocaleString()}`} trend={`â‚¦${stats?.weeklyRevenue.toLocaleString()} this week`} color="amber" />
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -892,7 +1196,7 @@ export default function Admin() {
                                                     {new Date(u.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                                                 </td>
                                                 <td className="px-8 py-5 text-sm font-bold text-foreground">
-                                                    ₦{(u.amountPaid || 0).toLocaleString()}
+                                                    â‚¦{(u.amountPaid || 0).toLocaleString()}
                                                 </td>
                                                 <td className="px-8 py-5">
                                                     <div className="flex flex-col gap-1">
@@ -975,26 +1279,541 @@ export default function Admin() {
                                                         <span>{u.nin || 'UNAVAILABLE'}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-8 py-6">
-                                                    <span className="px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-[10px] font-black uppercase tracking-wider border border-amber-100 italic">
-                                                        Pending Admin
-                                                    </span>
-                                                </td>
-                                                <td className="px-8 py-6 text-right">
-                                                    <button 
-                                                        disabled={processLoading === u._id}
-                                                        onClick={() => handleApprove(u._id)}
-                                                        className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold hover:bg-primary-dark transition-all shadow-md shadow-primary/20 disabled:opacity-50"
-                                                    >
-                                                        {processLoading === u._id ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Approve Access'}
-                                                    </button>
-                                                </td>
+                                                 <td className="px-8 py-6">
+                                                     <span className="px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-[10px] font-black uppercase tracking-wider border border-amber-100 italic">
+                                                         Pending Admin
+                                                     </span>
+                                                 </td>
+                                                 <td className="px-8 py-6 text-right space-x-2">
+                                                     <button 
+                                                         disabled={processLoading === u._id}
+                                                         onClick={() => handleApproveUser(u._id)}
+                                                         className="bg-primary text-white px-4 py-2 rounded-xl font-bold hover:bg-primary-dark transition-all shadow-md text-xs shadow-primary/20 disabled:opacity-50"
+                                                     >
+                                                         {processLoading === u._id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve Access'}
+                                                     </button>
+                                                     <button 
+                                                         disabled={processLoading === u._id}
+                                                         onClick={() => { setNinUnverifiableUserId(u._id); setShowNinUnverifiableModal(true); }}
+                                                         className="bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-xl font-bold hover:bg-red-100 transition-all text-xs"
+                                                     >
+                                                         Reach Out / Reject NIN
+                                                     </button>
+                                                 </td>
                                             </tr>
                                         ))
                                     )}
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* â”€â”€ Registered Merchants Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {activeTab === 'merchants' && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                    <div className="bg-white border border-neutral-200 rounded-[2.5rem] overflow-hidden shadow-sm p-8 flex items-center justify-between">
+                        <div>
+                            <h3 className="text-xl font-black text-foreground flex items-center gap-2">
+                                <Building2 className="w-5 h-5 text-primary" /> Registered Merchants Directory
+                            </h3>
+                            <p className="text-sm font-medium text-neutral-500 mt-1">Manage verified vendor store logos, names, star ratings, and directory details.</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setEditingMerchantId(null);
+                                setMerchantForm({
+                                    name: '', logoUrl: '', location: 'Computer Village, Ikeja, Lagos', category: 'Mobile Retailer & Authorized Dealer',
+                                    starRating: 5, dateJoined: new Date().toISOString().split('T')[0], phone: '', email: '', website: '', description: '', logoFile: null
+                                });
+                                setShowMerchantModal(true);
+                            }}
+                            className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary-dark transition-all text-xs shadow-lg shadow-primary/20"
+                        >
+                            <Plus className="w-4 h-4" /> Add New Merchant
+                        </button>
+                    </div>
+
+                    <div className="bg-white border border-neutral-200 rounded-[2.5rem] overflow-hidden shadow-sm">
+                        {merchantsLoading ? (
+                            <div className="p-20 text-center"><Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" /></div>
+                        ) : merchantsList.length === 0 ? (
+                            <div className="p-20 text-center font-bold text-neutral-400">No merchants in directory. Click Add New Merchant to create one.</div>
+                        ) : (
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-widest border-b border-neutral-100">
+                                        <th className="px-8 py-4">Logo &amp; Store Name</th>
+                                        <th className="px-8 py-4">Category</th>
+                                        <th className="px-8 py-4">Location</th>
+                                        <th className="px-8 py-4">Rating</th>
+                                        <th className="px-8 py-4">Date Joined</th>
+                                        <th className="px-8 py-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-100">
+                                    {merchantsList.map(m => (
+                                        <tr key={m._id} className="hover:bg-neutral-50/50 transition-colors">
+                                            <td className="px-8 py-4 flex items-center gap-3">
+                                                <img src={m.logoUrl} alt={m.name} className="w-10 h-10 rounded-xl object-cover border border-neutral-200" />
+                                                <div>
+                                                    <p className="font-bold text-foreground text-sm">{m.name}</p>
+                                                    <p className="text-xs text-neutral-400">{m.email || m.phone || 'No direct contact'}</p>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-4 text-xs font-semibold text-neutral-600">{m.category}</td>
+                                            <td className="px-8 py-4 text-xs text-neutral-500">{m.location}</td>
+                                            <td className="px-8 py-4 text-xs font-bold text-amber-500">â˜… {m.starRating}</td>
+                                            <td className="px-8 py-4 text-xs text-neutral-500">{new Date(m.dateJoined).toLocaleDateString()}</td>
+                                            <td className="px-8 py-4 text-right space-x-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingMerchantId(m._id);
+                                                        setMerchantForm({
+                                                            name: m.name, logoUrl: m.logoUrl, location: m.location, category: m.category,
+                                                            starRating: m.starRating, dateJoined: new Date(m.dateJoined).toISOString().split('T')[0],
+                                                            phone: m.phone || '', email: m.email || '', website: m.website || '', description: m.description || '', logoFile: null
+                                                        });
+                                                        setShowMerchantModal(true);
+                                                    }}
+                                                    className="px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-xs font-bold text-neutral-700"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteMerchant(m._id)}
+                                                    className="px-3 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg text-xs font-bold text-red-600"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* â”€â”€ Brand Influencers & Ambassadors Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {activeTab === 'influencers' && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                    <div className="bg-white border border-neutral-200 rounded-[2.5rem] overflow-hidden shadow-sm p-8 flex items-center justify-between">
+                        <div>
+                            <h3 className="text-xl font-black text-foreground flex items-center gap-2">
+                                <Sparkles className="w-5 h-5 text-primary" /> Brand Ambassadors & Influencers
+                            </h3>
+                            <p className="text-sm font-medium text-neutral-500 mt-1">Manage public tech creators, quotes, handles, and ambassador profiles.</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setEditingInfluencerId(null);
+                                setInfluencerForm({
+                                    name: '', photoUrl: '', role: 'Brand Ambassador', handle: '@traceit_ng', platform: 'Instagram', socialUrl: '', quote: '', starRating: 5, dateJoined: new Date().toISOString().split('T')[0], photoFile: null
+                                });
+                                setShowInfluencerModal(true);
+                            }}
+                            className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary-dark transition-all text-xs shadow-lg shadow-primary/20"
+                        >
+                            <Plus className="w-4 h-4" /> Add Ambassador
+                        </button>
+                    </div>
+
+                    <div className="bg-white border border-neutral-200 rounded-[2.5rem] overflow-hidden shadow-sm">
+                        {influencersLoading ? (
+                            <div className="p-20 text-center"><Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" /></div>
+                        ) : influencersList.length === 0 ? (
+                            <div className="p-20 text-center font-bold text-neutral-400">No brand ambassadors added yet.</div>
+                        ) : (
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-widest border-b border-neutral-100">
+                                        <th className="px-8 py-4">Ambassador</th>
+                                        <th className="px-8 py-4">Role &amp; Handle</th>
+                                        <th className="px-8 py-4">Platform</th>
+                                        <th className="px-8 py-4">Quote</th>
+                                        <th className="px-8 py-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-100">
+                                    {influencersList.map(inf => (
+                                        <tr key={inf._id} className="hover:bg-neutral-50/50 transition-colors">
+                                            <td className="px-8 py-4 flex items-center gap-3">
+                                                <img src={inf.photoUrl} alt={inf.name} className="w-10 h-10 rounded-xl object-cover border border-neutral-200" />
+                                                <span className="font-bold text-foreground text-sm">{inf.name}</span>
+                                            </td>
+                                            <td className="px-8 py-4 text-xs font-semibold text-neutral-600">
+                                                <p className="text-foreground">{inf.role}</p>
+                                                <p className="text-neutral-400 font-mono">{inf.handle}</p>
+                                            </td>
+                                            <td className="px-8 py-4 text-xs font-bold text-primary">{inf.platform}</td>
+                                            <td className="px-8 py-4 text-xs text-neutral-500 max-w-xs truncate">{inf.quote}</td>
+                                            <td className="px-8 py-4 text-right space-x-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingInfluencerId(inf._id);
+                                                        setInfluencerForm({
+                                                            name: inf.name, photoUrl: inf.photoUrl, role: inf.role, handle: inf.handle, platform: inf.platform,
+                                                            socialUrl: inf.socialUrl || '', quote: inf.quote, starRating: inf.starRating,
+                                                            dateJoined: new Date(inf.dateJoined).toISOString().split('T')[0], photoFile: null
+                                                        });
+                                                        setShowInfluencerModal(true);
+                                                    }}
+                                                    className="px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-xs font-bold text-neutral-700"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteInfluencer(inf._id)}
+                                                    className="px-3 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg text-xs font-bold text-red-600"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* â”€â”€ FAQ Directory Management Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {activeTab === 'faqs' && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                    <div className="bg-white border border-neutral-200 rounded-[2.5rem] overflow-hidden shadow-sm p-8 flex items-center justify-between">
+                        <div>
+                            <h3 className="text-xl font-black text-foreground flex items-center gap-2">
+                                <HelpCircle className="w-5 h-5 text-primary" /> Dynamic FAQ Directory
+                            </h3>
+                            <p className="text-sm font-medium text-neutral-500 mt-1">Manage public frequently asked questions and category answers dynamically.</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setEditingFaqId(null);
+                                setFaqForm({ question: '', answer: '', category: 'General', order: 0, isPublished: true });
+                                setShowFaqModal(true);
+                            }}
+                            className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary-dark transition-all text-xs shadow-lg shadow-primary/20"
+                        >
+                            <Plus className="w-4 h-4" /> Add FAQ Item
+                        </button>
+                    </div>
+
+                    <div className="bg-white border border-neutral-200 rounded-[2.5rem] overflow-hidden shadow-sm">
+                        {faqsLoading ? (
+                            <div className="p-20 text-center"><Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" /></div>
+                        ) : faqsList.length === 0 ? (
+                            <div className="p-20 text-center font-bold text-neutral-400">No FAQs created yet.</div>
+                        ) : (
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-widest border-b border-neutral-100">
+                                        <th className="px-8 py-4">Category</th>
+                                        <th className="px-8 py-4">Question</th>
+                                        <th className="px-8 py-4">Answer Preview</th>
+                                        <th className="px-8 py-4">Status</th>
+                                        <th className="px-8 py-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-100">
+                                    {faqsList.map(f => (
+                                        <tr key={f._id} className="hover:bg-neutral-50/50 transition-colors">
+                                            <td className="px-8 py-4 text-xs font-bold text-primary">{f.category}</td>
+                                            <td className="px-8 py-4 text-xs font-bold text-foreground">{f.question}</td>
+                                            <td className="px-8 py-4 text-xs text-neutral-500 max-w-sm truncate">{f.answer}</td>
+                                            <td className="px-8 py-4">
+                                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${f.isPublished ? 'bg-green-50 text-green-600' : 'bg-neutral-100 text-neutral-500'}`}>
+                                                    {f.isPublished ? 'Published' : 'Draft'}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-4 text-right space-x-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingFaqId(f._id);
+                                                        setFaqForm({ question: f.question, answer: f.answer, category: f.category, order: f.order || 0, isPublished: f.isPublished });
+                                                        setShowFaqModal(true);
+                                                    }}
+                                                    className="px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-xs font-bold text-neutral-700"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteFAQ(f._id)}
+                                                    className="px-3 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg text-xs font-bold text-red-600"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* â”€â”€ Platform Overview Content Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {activeTab === 'content' && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                    <div className="bg-white border border-neutral-200 rounded-[2.5rem] overflow-hidden shadow-sm p-8 flex items-center justify-between">
+                        <div>
+                            <h3 className="text-xl font-black text-foreground flex items-center gap-2">
+                                <Zap className="w-5 h-5 text-primary" /> Platform Overview Content
+                            </h3>
+                            <p className="text-sm font-medium text-neutral-500 mt-1">Manage Features, How-It-Works steps, and For-Who audience sections.</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setEditingContentId(null);
+                                setContentForm({ section: 'features', title: '', subtitle: '', icon: 'ShieldCheck', description: '', badge: '', order: 0 });
+                                setShowContentModal(true);
+                            }}
+                            className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary-dark transition-all text-xs shadow-lg shadow-primary/20"
+                        >
+                            <Plus className="w-4 h-4" /> Add Overview Item
+                        </button>
+                    </div>
+
+                    {/* Features, How-It-Works & For-Who Tables */}
+                    {['features', 'how_it_works', 'for_who'].map(sec => (
+                        <div key={sec} className="bg-white border border-neutral-200 rounded-[2.5rem] overflow-hidden shadow-sm p-6">
+                            <h4 className="text-base font-black text-foreground uppercase tracking-wider mb-4 border-b border-neutral-100 pb-3">
+                                Section: <span className="text-primary">{sec.replace('_', ' ')}</span>
+                            </h4>
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-neutral-50 text-neutral-400 text-[10px] font-black uppercase tracking-widest">
+                                        <th className="px-6 py-3">Title</th>
+                                        <th className="px-6 py-3">Icon</th>
+                                        <th className="px-6 py-3">Badge</th>
+                                        <th className="px-6 py-3">Description</th>
+                                        <th className="px-6 py-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-100">
+                                    {(contentList[sec === 'how_it_works' ? 'howItWorks' : sec === 'for_who' ? 'forWho' : 'features'] || []).map(item => (
+                                        <tr key={item._id} className="hover:bg-neutral-50/50">
+                                            <td className="px-6 py-4 font-bold text-foreground text-xs">{item.title}</td>
+                                            <td className="px-6 py-4 text-xs font-mono text-primary">{item.icon}</td>
+                                            <td className="px-6 py-4 text-xs text-neutral-500">{item.badge || 'â€”'}</td>
+                                            <td className="px-6 py-4 text-xs text-neutral-500 max-w-sm truncate">{item.description}</td>
+                                            <td className="px-6 py-4 text-right space-x-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingContentId(item._id);
+                                                        setContentForm({
+                                                            section: item.section, title: item.title, subtitle: item.subtitle || '',
+                                                            icon: item.icon, description: item.description, badge: item.badge || '', order: item.order || 0
+                                                        });
+                                                        setShowContentModal(true);
+                                                    }}
+                                                    className="px-3 py-1 bg-neutral-100 hover:bg-neutral-200 rounded text-xs font-bold text-neutral-700"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteContent(item._id)}
+                                                    className="px-3 py-1 bg-red-50 hover:bg-red-100 rounded text-xs font-bold text-red-600"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* â”€â”€ Merchant Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {showMerchantModal && (
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2.5rem] max-w-lg w-full p-8 shadow-2xl relative border border-neutral-200 max-h-[90vh] overflow-y-auto">
+                        <button onClick={() => setShowMerchantModal(false)} className="absolute top-6 right-6 text-neutral-400 hover:text-foreground">âœ•</button>
+                        <h3 className="text-xl font-black text-foreground mb-4">{editingMerchantId ? 'Edit Merchant' : 'Add New Registered Merchant'}</h3>
+                        <form onSubmit={handleSaveMerchant} className="space-y-4 text-xs">
+                            <div>
+                                <label className="font-bold text-neutral-700">Store Name *</label>
+                                <input type="text" required value={merchantForm.name} onChange={e => setMerchantForm({...merchantForm, name: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold text-foreground" />
+                            </div>
+                            <div>
+                                <label className="font-bold text-neutral-700">Logo Image Upload *</label>
+                                <input type="file" accept="image/*" onChange={e => setMerchantForm({...merchantForm, logoFile: e.target.files[0]})} className="w-full mt-1 p-2 bg-neutral-50 border border-neutral-200 rounded-xl" />
+                                {merchantForm.logoUrl && <p className="text-[10px] text-neutral-400 mt-1 truncate">Current logo: {merchantForm.logoUrl}</p>}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="font-bold text-neutral-700">Category</label>
+                                    <input type="text" value={merchantForm.category} onChange={e => setMerchantForm({...merchantForm, category: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold" />
+                                </div>
+                                <div>
+                                    <label className="font-bold text-neutral-700">Star Rating (1 - 5)</label>
+                                    <input type="number" min="1" max="5" step="0.1" value={merchantForm.starRating} onChange={e => setMerchantForm({...merchantForm, starRating: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="font-bold text-neutral-700">Location</label>
+                                <input type="text" value={merchantForm.location} onChange={e => setMerchantForm({...merchantForm, location: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="font-bold text-neutral-700">Phone</label>
+                                    <input type="text" value={merchantForm.phone} onChange={e => setMerchantForm({...merchantForm, phone: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl" />
+                                </div>
+                                <div>
+                                    <label className="font-bold text-neutral-700">Email</label>
+                                    <input type="email" value={merchantForm.email} onChange={e => setMerchantForm({...merchantForm, email: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="font-bold text-neutral-700">Description</label>
+                                <textarea rows="2" value={merchantForm.description} onChange={e => setMerchantForm({...merchantForm, description: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl" />
+                            </div>
+                            <button type="submit" disabled={processLoading === 'save_merchant'} className="w-full py-3 bg-primary text-white rounded-xl font-bold text-sm shadow-md">
+                                {processLoading === 'save_merchant' ? 'Saving...' : 'Save Merchant Details'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* â”€â”€ Influencer Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {showInfluencerModal && (
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2.5rem] max-w-lg w-full p-8 shadow-2xl relative border border-neutral-200 max-h-[90vh] overflow-y-auto">
+                        <button onClick={() => setShowInfluencerModal(false)} className="absolute top-6 right-6 text-neutral-400 hover:text-foreground">âœ•</button>
+                        <h3 className="text-xl font-black text-foreground mb-4">{editingInfluencerId ? 'Edit Ambassador' : 'Add Brand Ambassador'}</h3>
+                        <form onSubmit={handleSaveInfluencer} className="space-y-4 text-xs">
+                            <div>
+                                <label className="font-bold text-neutral-700">Name *</label>
+                                <input type="text" required value={influencerForm.name} onChange={e => setInfluencerForm({...influencerForm, name: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold" />
+                            </div>
+                            <div>
+                                <label className="font-bold text-neutral-700">Photo Upload *</label>
+                                <input type="file" accept="image/*" onChange={e => setInfluencerForm({...influencerForm, photoFile: e.target.files[0]})} className="w-full mt-1 p-2 bg-neutral-50 border border-neutral-200 rounded-xl" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="font-bold text-neutral-700">Role</label>
+                                    <input type="text" value={influencerForm.role} onChange={e => setInfluencerForm({...influencerForm, role: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl" />
+                                </div>
+                                <div>
+                                    <label className="font-bold text-neutral-700">Handle</label>
+                                    <input type="text" value={influencerForm.handle} onChange={e => setInfluencerForm({...influencerForm, handle: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="font-bold text-neutral-700">Quote / Endorsement</label>
+                                <textarea rows="3" required value={influencerForm.quote} onChange={e => setInfluencerForm({...influencerForm, quote: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl" />
+                            </div>
+                            <button type="submit" disabled={processLoading === 'save_influencer'} className="w-full py-3 bg-primary text-white rounded-xl font-bold text-sm shadow-md">
+                                {processLoading === 'save_influencer' ? 'Saving...' : 'Save Ambassador Details'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* â”€â”€ FAQ Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {showFaqModal && (
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2.5rem] max-w-lg w-full p-8 shadow-2xl relative border border-neutral-200 max-h-[90vh] overflow-y-auto">
+                        <button onClick={() => setShowFaqModal(false)} className="absolute top-6 right-6 text-neutral-400 hover:text-foreground">âœ•</button>
+                        <h3 className="text-xl font-black text-foreground mb-4">{editingFaqId ? 'Edit FAQ Item' : 'Create FAQ Item'}</h3>
+                        <form onSubmit={handleSaveFAQ} className="space-y-4 text-xs">
+                            <div>
+                                <label className="font-bold text-neutral-700">Category</label>
+                                <select value={faqForm.category} onChange={e => setFaqForm({...faqForm, category: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold">
+                                    <option value="General">General</option>
+                                    <option value="Registration">Registration</option>
+                                    <option value="Verification">Verification</option>
+                                    <option value="Transfers">Transfers</option>
+                                    <option value="Security">Security</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="font-bold text-neutral-700">Question *</label>
+                                <input type="text" required value={faqForm.question} onChange={e => setFaqForm({...faqForm, question: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold" />
+                            </div>
+                            <div>
+                                <label className="font-bold text-neutral-700">Answer *</label>
+                                <textarea rows="4" required value={faqForm.answer} onChange={e => setFaqForm({...faqForm, answer: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl" />
+                            </div>
+                            <button type="submit" disabled={processLoading === 'save_faq'} className="w-full py-3 bg-primary text-white rounded-xl font-bold text-sm shadow-md">
+                                {processLoading === 'save_faq' ? 'Saving...' : 'Save FAQ Item'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* â”€â”€ Content Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {showContentModal && (
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2.5rem] max-w-lg w-full p-8 shadow-2xl relative border border-neutral-200 max-h-[90vh] overflow-y-auto">
+                        <button onClick={() => setShowContentModal(false)} className="absolute top-6 right-6 text-neutral-400 hover:text-foreground">âœ•</button>
+                        <h3 className="text-xl font-black text-foreground mb-4">{editingContentId ? 'Edit Overview Item' : 'Add Overview Item'}</h3>
+                        <form onSubmit={handleSaveContent} className="space-y-4 text-xs">
+                            <div>
+                                <label className="font-bold text-neutral-700">Section *</label>
+                                <select value={contentForm.section} onChange={e => setContentForm({...contentForm, section: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold">
+                                    <option value="features">Features</option>
+                                    <option value="how_it_works">How It Works</option>
+                                    <option value="for_who">For Who</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="font-bold text-neutral-700">Title *</label>
+                                <input type="text" required value={contentForm.title} onChange={e => setContentForm({...contentForm, title: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl font-bold" />
+                            </div>
+                            <div>
+                                <label className="font-bold text-neutral-700">Description *</label>
+                                <textarea rows="3" required value={contentForm.description} onChange={e => setContentForm({...contentForm, description: e.target.value})} className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl" />
+                            </div>
+                            <button type="submit" disabled={processLoading === 'save_content'} className="w-full py-3 bg-primary text-white rounded-xl font-bold text-sm shadow-md">
+                                {processLoading === 'save_content' ? 'Saving...' : 'Save Overview Content'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* â”€â”€ Reach Out for Unverifiable NIN Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {showNinUnverifiableModal && (
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2.5rem] max-w-md w-full p-8 shadow-2xl relative border border-neutral-200">
+                        <button onClick={() => setShowNinUnverifiableModal(false)} className="absolute top-6 right-6 text-neutral-400 hover:text-foreground">âœ•</button>
+                        <h3 className="text-xl font-black text-red-600 mb-2">Unverifiable NIN Notification</h3>
+                        <p className="text-xs text-neutral-500 mb-4">
+                            Send a direct notification email to the user explaining why their NIN could not be verified and what steps to take.
+                        </p>
+                        <form onSubmit={handleReachOutUnverifiable} className="space-y-4 text-xs">
+                            <div>
+                                <label className="font-bold text-neutral-700">Reason / Instructions for User *</label>
+                                <textarea
+                                    rows="4"
+                                    required
+                                    value={ninUnverifiableReason}
+                                    onChange={e => setNinUnverifiableReason(e.target.value)}
+                                    placeholder="e.g., Name on NIN slip does not match registered account name. Please verify spelling or update details..."
+                                    className="w-full mt-1 p-3 bg-neutral-50 border border-neutral-200 rounded-xl"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={processLoading === 'unverifiable_nin'}
+                                className="w-full py-3 bg-red-600 text-white rounded-xl font-bold text-xs shadow-md hover:bg-red-700 transition-colors"
+                            >
+                                {processLoading === 'unverifiable_nin' ? 'Sending Email...' : 'Send Unverifiable NIN Email'}
+                            </button>
+                        </form>
                     </div>
                 </div>
             )}
@@ -1137,7 +1956,7 @@ export default function Admin() {
                                                     <p className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider mt-0.5">{req.user?.phoneNumber}</p>
                                                 </td>
                                                 <td className="px-8 py-5">
-                                                    <p className="font-black text-foreground text-lg">₦{req.amount?.toLocaleString()}</p>
+                                                    <p className="font-black text-foreground text-lg">â‚¦{req.amount?.toLocaleString()}</p>
                                                 </td>
                                                 <td className="px-8 py-5">
                                                     <p className="text-sm font-bold text-foreground">{req.bankName}</p>
@@ -1554,7 +2373,7 @@ export default function Admin() {
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                         {/* Daily Activity Chart */}
                                         <div className="bg-white rounded-3xl border border-neutral-200 p-7 shadow-sm">
-                                            <h3 className="text-base font-black text-foreground mb-1">Sessions — Last 7 Days</h3>
+                                            <h3 className="text-base font-black text-foreground mb-1">Sessions â€” Last 7 Days</h3>
                                             <p className="text-xs text-neutral-400 font-medium mb-5">Daily visitor count</p>
                                             <div className="flex items-end gap-2 h-36">
                                                 {analyticsData.dailyActivity.length === 0 ? (
@@ -1626,7 +2445,7 @@ export default function Admin() {
                                                 {analyticsData.topEvents.map((ev, i) => (
                                                     <div key={i} className="flex items-center justify-between gap-2">
                                                         <span className="text-xs font-bold text-neutral-700 truncate max-w-[160px]">{ev._id || 'unknown'}</span>
-                                                        <span className="text-xs font-black px-2 py-0.5 bg-primary/10 text-primary rounded-lg shrink-0">{ev.count}×</span>
+                                                        <span className="text-xs font-black px-2 py-0.5 bg-primary/10 text-primary rounded-lg shrink-0">{ev.count}Ã—</span>
                                                     </div>
                                                 ))}
                                                 {analyticsData.topEvents.length === 0 && <p className="text-neutral-400 text-sm font-medium">No click data yet.</p>}
@@ -1653,12 +2472,12 @@ export default function Admin() {
                                         </div>
                                     </div>
 
-                                    {/* IP Address Table — sortable, with monthly visit count & user identity */}
+                                    {/* IP Address Table â€” sortable, with monthly visit count & user identity */}
                                     <div className="bg-white rounded-3xl border border-neutral-200 overflow-hidden shadow-sm">
                                         <div className="p-7 border-b border-neutral-100 flex items-center justify-between">
                                             <div>
                                                 <h3 className="text-base font-black text-foreground flex items-center gap-2"><Globe className="w-4 h-4 text-neutral-300" /> IP Address Report</h3>
-                                                <p className="text-xs text-neutral-400 font-medium mt-1">All visitors — sortable by frequency or recency. Click column headers to re-sort.</p>
+                                                <p className="text-xs text-neutral-400 font-medium mt-1">All visitors â€” sortable by frequency or recency. Click column headers to re-sort.</p>
                                             </div>
                                             <div className="flex gap-2">
                                                 <button onClick={() => { setAnalyticsIPSort('visits'); fetchAnalytics(analyticsMonth, 'visits'); }} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${analyticsIPSort === 'visits' ? 'bg-primary text-white' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'}`}>
@@ -1676,10 +2495,10 @@ export default function Admin() {
                                                         <th className="px-7 py-3">#</th>
                                                         <th className="px-7 py-3">IP Address</th>
                                                         <th className="px-7 py-3">Associated User</th>
-                                                        <th className="px-7 py-3 cursor-pointer hover:text-primary" onClick={() => { setAnalyticsIPSort('visits'); fetchAnalytics(analyticsMonth, 'visits'); }}>Total Visits ↕</th>
+                                                        <th className="px-7 py-3 cursor-pointer hover:text-primary" onClick={() => { setAnalyticsIPSort('visits'); fetchAnalytics(analyticsMonth, 'visits'); }}>Total Visits â†•</th>
                                                         <th className="px-7 py-3">This Month</th>
                                                         <th className="px-7 py-3">First Seen</th>
-                                                        <th className="px-7 py-3 cursor-pointer hover:text-primary" onClick={() => { setAnalyticsIPSort('lastSeen'); fetchAnalytics(analyticsMonth, 'lastSeen'); }}>Last Active ↕</th>
+                                                        <th className="px-7 py-3 cursor-pointer hover:text-primary" onClick={() => { setAnalyticsIPSort('lastSeen'); fetchAnalytics(analyticsMonth, 'lastSeen'); }}>Last Active â†•</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-neutral-50">
@@ -1705,10 +2524,10 @@ export default function Admin() {
                                                                 </span>
                                                             </td>
                                                             <td className="px-7 py-4 text-xs text-neutral-400 font-medium">
-                                                                {ip.firstSeen ? new Date(ip.firstSeen).toLocaleDateString() : '—'}
+                                                                {ip.firstSeen ? new Date(ip.firstSeen).toLocaleDateString() : 'â€”'}
                                                             </td>
                                                             <td className="px-7 py-4 text-xs text-neutral-500 font-medium">
-                                                                {ip.lastSeen ? new Date(ip.lastSeen).toLocaleString() : '—'}
+                                                                {ip.lastSeen ? new Date(ip.lastSeen).toLocaleString() : 'â€”'}
                                                             </td>
                                                         </tr>
                                                     ))}
@@ -1721,7 +2540,7 @@ export default function Admin() {
                                     <div className="bg-white rounded-3xl border border-neutral-200 overflow-hidden shadow-sm">
                                         <div className="p-7 border-b border-neutral-100">
                                             <h3 className="text-base font-black text-foreground">Recent Sessions</h3>
-                                            <p className="text-xs text-neutral-400 font-medium mt-1">Individual visitor sessions for {analyticsMonth} — guests and logged-in users.</p>
+                                            <p className="text-xs text-neutral-400 font-medium mt-1">Individual visitor sessions for {analyticsMonth} â€” guests and logged-in users.</p>
                                         </div>
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-left">
@@ -1808,7 +2627,7 @@ export default function Admin() {
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                             <div className="bg-white p-5 rounded-[1.5rem] border border-neutral-200 shadow-sm text-center">
                                                 <p className="text-[10px] font-black uppercase text-neutral-400 mb-1 tracking-widest">Total Paid</p>
-                                                <p className="text-xl font-black text-primary">₦{(selectedUser.totalPaid || 0).toLocaleString()}</p>
+                                                <p className="text-xl font-black text-primary">â‚¦{(selectedUser.totalPaid || 0).toLocaleString()}</p>
                                             </div>
                                             <div className="bg-white p-5 rounded-[1.5rem] border border-neutral-200 shadow-sm text-center">
                                                 <p className="text-[10px] font-black uppercase text-neutral-400 mb-1 tracking-widest">Sub Days Left</p>
@@ -1884,7 +2703,7 @@ export default function Admin() {
                                                             <tr key={i} className="hover:bg-neutral-50/50">
                                                                 <td className="px-6 py-4 text-xs font-medium text-neutral-600">{new Date(p.createdAt).toLocaleDateString()}</td>
                                                                 <td className="px-6 py-4 text-xs font-mono font-bold text-neutral-800">{p.reference}</td>
-                                                                <td className="px-6 py-4 text-xs font-black text-foreground">₦{(p.amount || 0).toLocaleString()}</td>
+                                                                <td className="px-6 py-4 text-xs font-black text-foreground">â‚¦{(p.amount || 0).toLocaleString()}</td>
                                                                 <td className="px-6 py-4 text-[10px] font-black uppercase text-neutral-400 tracking-wider">{p.type}</td>
                                                                 <td className="px-6 py-4">
                                                                     <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${p.status === 'success' ? 'bg-green-50 text-green-600' : p.status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>{p.status}</span>
@@ -1907,7 +2726,7 @@ export default function Admin() {
                 </main>
             </div>
 
-            {/* ── Email Centre Tab ───────────────────────────────────── */}
+            {/* â”€â”€ Email Centre Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {activeTab === 'email' && (
                 <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-neutral-50/30">
                     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -1927,8 +2746,8 @@ export default function Admin() {
                             {/* Mode Toggle */}
                             <div className="bg-white p-1.5 rounded-2xl border border-neutral-200 flex shadow-sm">
                                 {[
-                                    { id: 'template', label: '⚡ Smart Templates', icon: Smartphone },
-                                    { id: 'custom',   label: '🎨 Custom Broadcast',  icon: Edit3 }
+                                    { id: 'template', label: 'âš¡ Smart Templates', icon: Smartphone },
+                                    { id: 'custom',   label: 'ðŸŽ¨ Custom Broadcast',  icon: Edit3 }
                                 ].map(m => (
                                     <button
                                         key={m.id}
@@ -2130,7 +2949,7 @@ export default function Admin() {
                                         <div>
                                             <p className="text-sm font-black text-foreground">Launch Campaign</p>
                                             <p className="text-[11px] text-neutral-400 font-bold uppercase tracking-wider">
-                                                Target: <span className="text-primary">{emailTarget}</span> • Mode: <span className="text-primary">{emailMode}</span>
+                                                Target: <span className="text-primary">{emailTarget}</span> â€¢ Mode: <span className="text-primary">{emailMode}</span>
                                             </p>
                                         </div>
                                     </div>
@@ -2199,7 +3018,7 @@ export default function Admin() {
                                                 </div>
                                                 <div className="text-right">
                                                     <div className={`text-[9px] font-black uppercase tracking-[0.15em] px-3 py-1.5 rounded-lg inline-block ${r.status === 'sent' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                        {r.status === 'sent' ? '✓ Delivered' : '✗ Failed'}
+                                                        {r.status === 'sent' ? 'âœ“ Delivered' : 'âœ— Failed'}
                                                     </div>
                                                     {r.error && <p className="text-[9px] text-red-400 font-medium mt-1">{r.error}</p>}
                                                 </div>

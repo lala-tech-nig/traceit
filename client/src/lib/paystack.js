@@ -36,7 +36,7 @@ export async function payWithPaystack({ email, amount, description, reference, o
     }
 
     const handler = window.PaystackPop.setup({
-        key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
+        key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_live_d32baa940c2f2552db49d2833f15e533a68d7b63',
         email,
         amount: amount * 100, // Paystack expects amount in kobo
         currency: 'NGN',

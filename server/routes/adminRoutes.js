@@ -17,7 +17,8 @@ import {
     getVerificators,
     manageVerificator,
     getAdminVerifications,
-    sendBulkEmail
+    sendBulkEmail,
+    reachOutUnverifiableNIN
 } from '../controllers/adminController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
@@ -31,6 +32,7 @@ router.get('/users', protect, admin, getAllUsers);
 router.get('/users/:id', protect, admin, getUserAdminDetails);
 router.get('/pending', protect, admin, getPendingApprovals);
 router.put('/approve/:id', protect, admin, approveUser);
+router.post('/users/:id/nin-unverifiable', protect, admin, reachOutUnverifiableNIN);
 router.get('/backup', protect, admin, downloadBackup);
 
 // Withdrawal management

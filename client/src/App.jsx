@@ -11,6 +11,10 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import Admin from '@/pages/Admin';
 import VerificatorDashboard from '@/pages/VerificatorDashboard';
+import Merchants from '@/pages/Merchants';
+import Influencers from '@/pages/Influencers';
+import Overview from '@/pages/Overview';
+import FAQPage from '@/pages/FAQPage';
 
 // Dashboard Pages
 import DashboardLayout from '@/pages/dashboard/DashboardLayout';
@@ -37,6 +41,10 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verificator" element={<VerificatorDashboard />} />
+          <Route path="/merchants" element={<Merchants />} />
+          <Route path="/influencers" element={<Influencers />} />
+          <Route path="/features" element={<Overview />} />
+          <Route path="/faq" element={<FAQPage />} />
           <Route path="/admin" element={<Admin />} />
 
           {/* Dashboard Nested Routes */}

@@ -3,7 +3,7 @@ import generateToken from '../utils/generateToken.js';
 import Referral from '../models/Referral.js';
 import VerificationJob from '../models/VerificationJob.js';
 import OTP from '../models/OTP.js';
-import { sendWelcomeEmail, sendOtpEmail, sendAdminAlert } from '../utils/emailService.js';
+import { sendWelcomeEmail, sendOtpEmail, sendAdminAlert, sendLoginAlertEmail } from '../utils/emailService.js';
 
 // Helper: assign a new verification job to the least-loaded available verificator
 const assignVerificationJob = async (newUserId) => {
@@ -211,6 +211,11 @@ export const loginUser = async (req, res) => {
             // Stamp last login time for re-engagement scheduler
             user.lastLoginAt = new Date();
             await user.save();
+
+            // Trigger login alert email to user & admin (non-blocking)
+            const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
+            const userAgent = req.headers['user-agent'] || 'Web Client';
+            sendLoginAlertEmail(user, { ip: clientIp, userAgent }).catch(err => console.error('[EMAIL] Login alert failed:', err.message));
 
             res.json({
                 _id: user._id,

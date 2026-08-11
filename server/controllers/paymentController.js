@@ -2,7 +2,7 @@ import Payment from '../models/Payment.js';
 import User from '../models/User.js';
 import WithdrawalRequest from '../models/WithdrawalRequest.js';
 import axios from 'axios';
-import { sendAdminAlert } from '../utils/emailService.js';
+import { sendAdminAlert, sendNinSubmittedPaymentEmail } from '../utils/emailService.js';
 
 // @desc    Verify payment
 // @route   POST /api/payments/verify
@@ -74,6 +74,9 @@ export const verifyPayment = async (req, res) => {
             }
             user.hasPaid = true;
             await user.save();
+
+            // Trigger security identity check email to user (non-blocking)
+            sendNinSubmittedPaymentEmail(user).catch(err => console.error('[EMAIL] NIN payment submitted email failed:', err.message));
         }
 
         // For 'search' or 'transfer' by basic users, we just record the payment so client can proceed

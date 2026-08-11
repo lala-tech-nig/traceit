@@ -10,32 +10,35 @@ import {
   Users,
   Star,
   MapPin,
-  ChevronDown,
-  Menu,
-  X,
   Zap,
-  Lock,
-  TrendingUp,
   Award,
   Eye,
-  Globe
+  Globe,
+  X,
+  Sparkles,
+  Building2,
+  ChevronRight,
+  Lock,
+  Loader2,
+  AlertTriangle,
+  Fingerprint
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import PublicLayout from "@/components/PublicLayout";
+import axios from "axios";
 
 // --- Reusable Components ---
 
-function WordCarousel({ words, interval = 2400 }) {
+function WordCarousel({ words, interval = 3000, className = "" }) {
   const [index, setIndex] = useState(0);
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     const cycle = setInterval(() => {
-      // Fade out
       setVisible(false);
       setTimeout(() => {
         setIndex(i => (i + 1) % words.length);
-        // Fade in
         setVisible(true);
       }, 350);
     }, interval);
@@ -44,13 +47,10 @@ function WordCarousel({ words, interval = 2400 }) {
 
   return (
     <span
+      className={`inline-block transition-all duration-350 ${className}`}
       style={{
-        display: "inline-block",
-        transition: "opacity 0.35s ease, transform 0.35s ease",
         opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(-12px)",
-        color: "#f97316",
-        minWidth: "2ch",
+        transform: visible ? "translateY(0)" : "translateY(-14px)",
       }}
     >
       {words[index]}
@@ -88,47 +88,26 @@ function CountUp({ target, suffix = "", duration = 2000 }) {
   return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
 }
 
-// --- FAQ Accordion ---
 const FAQ_ITEMS = [
   {
     q: "What exactly is TraceIt?",
-    a: "TraceIt is Nigeria's first verified national gadget registry. Think of it like a Land Registry — but for electronic devices. Every phone, laptop, tablet, or computer registered on TraceIt is permanently linked to its NIN-verified owner. This creates an immutable digital record that proves ownership, tracks device history, and flags stolen gadgets across a nationwide database accessible to buyers, sellers, technicians, and law enforcement.",
+    a: "TraceIt is Nigeria's first verified national gadget registry. Think of it like a Land Registry — but for electronic devices. Every phone, laptop, tablet, or computer registered on TraceIt is permanently linked to its NIN-verified owner.",
   },
   {
     q: "Why should I register my device on TraceIt?",
-    a: "Registering your device does three critical things: (1) It establishes verifiable proof of ownership — no receipt or box is needed. (2) It makes recovery far more likely if the device is ever stolen, because it's flagged in a national database that technicians and buyers check. (3) It massively increases your device's resale value — a registered, clean device commands a higher price because the buyer can independently verify it isn't stolen. Unregistered devices raise suspicion in the secondary market.",
-  },
-  {
-    q: "How does TraceIt enhance my chances of finding a lost or stolen gadget?",
-    a: "When you flag a device as stolen on TraceIt, it becomes instantly visible in our national registry as 'STOLEN'. Any buyer, technician, or verified user who checks that device's serial number or IMEI will see the flag. Our network includes repair shops, phone dealers, and individual buyers across Nigeria who run checks before transacting. Additionally, our Verificators — field agents who confirm addresses — create a verifiable chain of custody. Several users have had their devices recovered this way. The more active the TraceIt network grows, the higher recovery chances become.",
+    a: "Registering your device establishes verifiable proof of ownership, makes recovery possible if stolen, and massively increases your device's resale value in the secondary market.",
   },
   {
     q: "Why am I paying ₦500 for identity verification?",
-    a: "The ₦500 identity verification fee is a one-time, lifetime charge — not a subscription. It covers the cost of connecting to the NIN verification infrastructure, running background checks, and maintaining a legally-accountable user database. Without verified identities, TraceIt would be exploitable — anyone could register a stolen device. This small fee is what separates TraceIt from a fake registry. It's also what gives your registered devices legal weight. Think of it as the cost of a certified stamp of authenticity for every device you'll ever own.",
+    a: "The ₦500 identity verification fee is a one-time lifetime charge that connects your profile to official NIMC NIN verification, keeping fraudsters off the platform and giving your ownership certificate legal weight.",
   },
   {
     q: "Can I check a device before buying without registering?",
-    a: "Yes — device lookup by serial number or IMEI is publicly accessible without an account, so you can check a device's stolen/clean status before making any payment. However, to register your own devices, report theft, or perform ownership transfers, you will need to create a verified account.",
+    a: "Yes — public device lookups by serial number or IMEI can be checked instantly to confirm if a device has clean status or is flagged stolen.",
   },
   {
     q: "How do I transfer ownership when I sell a device?",
-    a: "Once you're registered and verified, go to your dashboard, select the device, and initiate a Transfer. The buyer receives a digital transfer request which they must accept on their own TraceIt account. Once accepted, the device is removed from your profile and permanently linked to the new owner — creating a traceable, tamper-proof transaction record that protects both parties.",
-  },
-  {
-    q: "What if someone registers my device without my permission?",
-    a: "Devices are registered under NIN-verified identities. Any fraudulent registration can be challenged and investigated using the verifiable identity trail. TraceIt's support team reviews ownership disputes using NIN records, purchase evidence, and device history. If you believe your device has been fraudulently registered, contact support immediately with your proof of purchase.",
-  },
-  {
-    q: "I'm a phone technician — what's in TraceIt for me?",
-    a: "As a technician, TraceIt protects you legally. Before accepting any device for repair, you can run a 5-second check to confirm it isn't stolen. Servicing a stolen device — even unknowingly — can make you legally liable. With TraceIt, you have a documented record that you performed due diligence. Additionally, technician accounts can flag suspicious devices brought in for repair, helping the entire community.",
-  },
-  {
-    q: "Is my personal data safe on TraceIt?",
-    a: "Yes. TraceIt stores all data on secured, encrypted servers. Your NIN is used only for one-time identity verification and is never shared with third parties or displayed publicly. Devices listed in the public registry only show verification status — not personal owner details. Full identity information is only visible to law enforcement with a valid request. Our platform is compliant with Nigeria's Data Protection Act (NDPA 2023).",
-  },
-  {
-    q: "What if the platform is down when I want to check a device urgently?",
-    a: "TraceIt maintains 99%+ uptime on cloud infrastructure. However, if you're unable to access the platform in an emergency, our general advice is simple: if you cannot verify a device before buying, do not buy it. The risk of purchasing a stolen gadget — and the legal consequences — far outweigh the inconvenience of postponing a transaction. A seller who pressures you to buy without checking should be treated as a red flag.",
+    a: "Log into your dashboard, select your device, and initiate a Transfer by entering the buyer's TraceIt email. Once accepted by the buyer, ownership is permanently moved and a digital receipt is generated.",
   },
 ];
 
@@ -136,7 +115,7 @@ function FaqItem({ q, a, isOpen, onClick }) {
   return (
     <div
       className={`border rounded-2xl overflow-hidden transition-all duration-200 ${
-        isOpen ? "border-orange-300 shadow-sm" : "border-neutral-100"
+        isOpen ? "border-orange-300 shadow-sm bg-orange-50/30" : "border-neutral-200 bg-white"
       }`}
     >
       <button
@@ -165,48 +144,49 @@ function FaqItem({ q, a, isOpen, onClick }) {
   );
 }
 
-function FaqList() {
-  const [openIndex, setOpenIndex] = useState(0);
-  return (
-    <div className="space-y-3">
-      {FAQ_ITEMS.map((item, i) => (
-        <FaqItem
-          key={i}
-          q={item.q}
-          a={item.a}
-          isOpen={openIndex === i}
-          onClick={() => setOpenIndex(openIndex === i ? -1 : i)}
-        />
-      ))}
-    </div>
-  );
-}
-
-// --- Main Page ---
+// --- Main Page Component ---
 export default function Home() {
+  const { user, API_URL } = useAuth();
+  const navigate = useNavigate();
+  const [heroSearch, setHeroSearch] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchResult, setSearchResult] = useState(null);
+  const [searchError, setSearchError] = useState(null);
+  const [openFaqIndex, setOpenFaqIndex] = useState(0);
 
-  const { user } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const handleHeroSearchSubmit = async (e) => {
+    e.preventDefault();
+    if (!heroSearch.trim()) return;
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    try {
+      setSearchLoading(true);
+      setSearchError(null);
+      setSearchResult(null);
+      const res = await axios.get(`${API_URL}/devices/search/${encodeURIComponent(heroSearch.trim())}`);
+      setSearchResult(res.data);
+    } catch (err) {
+      if (err.response && err.response.status === 404) {
+        setSearchResult({ found: false, serialNumber: heroSearch.trim() });
+      } else {
+        setSearchError("Could not perform lookup. Please try again or sign in.");
+      }
+    } finally {
+      setSearchLoading(false);
+    }
+  };
 
   const features = [
     {
       icon: <Smartphone className="w-6 h-6" />,
       title: "Device Registry",
-      description: "Register your smartphones, laptops, and tablets to establish verified proof of ownership on a secure national database.",
+      description: "Register smartphones, laptops, and tablets to establish verified proof of ownership on a secure national database.",
       color: "text-orange-500",
       bg: "bg-orange-50",
     },
     {
       icon: <ShieldAlert className="w-6 h-6" />,
       title: "Theft Reporting",
-      description: "Flag stolen or lost devices instantly. Our nationwide alert system helps buyers, technicians, and law enforcement.",
+      description: "Flag stolen or lost devices instantly. Our nationwide alert system alerts buyers, technicians, and law enforcement.",
       color: "text-red-500",
       bg: "bg-red-50",
     },
@@ -227,7 +207,7 @@ export default function Home() {
     {
       icon: <Search className="w-6 h-6" />,
       title: "Public Device Search",
-      description: "Check any device's registration status, theft flag, and full transaction history with a simple serial number search.",
+      description: "Check any device's registration status, theft flag, and transaction history with a simple serial number search.",
       color: "text-green-500",
       bg: "bg-green-50",
     },
@@ -249,7 +229,7 @@ export default function Home() {
     {
       step: "02",
       title: "Register Your Devices",
-      description: "Add your gadgets with their IMEI number or Serial Number. Upload a photo and link them to your verified identity.",
+      description: "Add your gadgets with their IMEI or Serial Number. Upload a photo and link them to your verified identity.",
     },
     {
       step: "03",
@@ -258,33 +238,9 @@ export default function Home() {
     },
   ];
 
-  const testimonials = [
-    {
-      name: "Emeka Okonkwo",
-      role: "Electronics Vendor, Lagos",
-      text: "TraceIt transformed how I run my shop. My customers now know every device I sell is clean and legitimate. Sales confidence went up 100%.",
-      rating: 5,
-      avatar: "EO",
-    },
-    {
-      name: "Amina Bello",
-      role: "IT Professional, Abuja",
-      text: "I checked a used MacBook's serial number before buying — TraceIt showed it was flagged stolen. Saved me over ₦350,000. Amazing service.",
-      rating: 5,
-      avatar: "AB",
-    },
-    {
-      name: "Chukwudi Eze",
-      role: "University Student, Enugu",
-      text: "My phone was stolen and I flagged it on TraceIt. A week later, a technician spotted it and I got it back. This platform is a game changer.",
-      rating: 5,
-      avatar: "CE",
-    },
-  ];
-
   const roles = [
     {
-      icon: <Users className="w-8 h-8" />,
+      icon: <Users className="w-6 h-6 text-orange-600" />,
       title: "Individuals",
       subtitle: "Protect Your Devices",
       perks: [
@@ -293,11 +249,11 @@ export default function Home() {
         "Secure device transfers",
         "Full history access",
       ],
-      color: "border-orange-200 hover:border-orange-400",
+      color: "border-orange-200 hover:border-orange-400 bg-white",
       badge: "bg-orange-100 text-orange-700",
     },
     {
-      icon: <Globe className="w-8 h-8" />,
+      icon: <Globe className="w-6 h-6 text-blue-600" />,
       title: "Vendors",
       subtitle: "Build Customer Trust",
       perks: [
@@ -306,11 +262,11 @@ export default function Home() {
         "Sales verification receipts",
         "Analytics & reports",
       ],
-      color: "border-blue-200 hover:border-blue-400",
+      color: "border-blue-200 hover:border-blue-400 bg-white",
       badge: "bg-blue-100 text-blue-700",
     },
     {
-      icon: <Eye className="w-8 h-8" />,
+      icon: <Eye className="w-6 h-6 text-green-600" />,
       title: "Technicians",
       subtitle: "Serve with Confidence",
       perks: [
@@ -319,332 +275,349 @@ export default function Home() {
         "Report suspicious devices",
         "Earn with verifications",
       ],
-      color: "border-green-200 hover:border-green-400",
+      color: "border-green-200 hover:border-green-400 bg-white",
       badge: "bg-green-100 text-green-700",
     },
   ];
 
   return (
-    <div className="min-h-screen bg-white font-sans antialiased">
-      {/* ── NAVBAR ── */}
-      <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrolled ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-neutral-100" : "bg-transparent"
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-5 lg:px-8 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-lg font-black text-neutral-900 tracking-tight">TraceIt</span>
-          </Link>
+    <PublicLayout>
+      {/* ── FULL SCREEN & FULL WIDTH HERO SECTION (WHITE BACKGROUND) ── */}
+      <section className="w-full min-h-[calc(100vh-4rem)] lg:min-h-screen flex flex-col justify-center pt-24 pb-16 px-5 lg:px-12 relative overflow-hidden bg-gradient-to-b from-orange-50/50 via-white to-white text-neutral-900 border-b border-neutral-100">
+        {/* Soft Background Accents */}
+        <div className="absolute top-0 right-0 w-[650px] h-[650px] bg-orange-100/60 rounded-full blur-[140px] -translate-y-1/3 translate-x-1/3 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[450px] h-[450px] bg-amber-100/40 rounded-full blur-[120px] translate-y-1/4 -translate-x-1/4 pointer-events-none" />
 
-          <nav className="hidden md:flex items-center gap-8">
-            {[
-              ["Features", "#features"],
-              ["How It Works", "#how-it-works"],
-              ["For Who", "#for-who"],
-            ].map(([label, href]) => (
-              <a
-                key={label}
-                href={href}
-                className="text-sm font-semibold text-neutral-600 hover:text-orange-500 transition-colors"
-              >
-                {label}
-              </a>
-            ))}
-          </nav>
-
-          <div className="hidden md:flex items-center gap-3">
-            <Link
-              to="/login"
-              className="text-sm font-bold text-neutral-700 hover:text-orange-500 transition-colors px-4 py-2"
-            >
-              Sign In
-            </Link>
-            <Link
-              to={user ? "/dashboard" : "/register"}
-              className="text-sm font-bold bg-orange-500 text-white px-5 py-2.5 rounded-xl hover:bg-orange-600 transition-colors"
-            >
-              {user ? "Dashboard" : "Get Started"}
-            </Link>
+        <div className="w-full max-w-7xl mx-auto relative z-10 my-auto">
+          {/* Top Badge */}
+          <div className="inline-flex items-center gap-2 bg-white text-orange-600 border border-orange-200 text-xs font-black uppercase tracking-widest px-5 py-2.5 rounded-full mb-8 shadow-sm">
+            <span className="w-2 h-2 bg-orange-500 rounded-full animate-ping" />
+            Nigeria's #1 National Gadget Registry &amp; Anti-Theft Network
           </div>
 
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg text-neutral-700"
-          >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
+          {/* FULL SCREEN HERO TEXT */}
+          <div className="w-full">
+            <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tight leading-[1.02] mb-8 text-neutral-900">
+              Don't Buy A Stolen{" "}
+              <WordCarousel
+                words={["Phone", "MacBook", "Laptop", "iPad", "Camera", "Gadget"]}
+                interval={3000}
+                className="text-orange-500 underline decoration-orange-300 decoration-wavy"
+              />
+              <br />
+              <span className="text-neutral-700">And End Up</span>{" "}
+              <WordCarousel
+                words={[
+                  "Behind Bars.",
+                  "in Police Custody.",
+                  "with a Criminal Record.",
+                  "in Court.",
+                  "Paying a Bail Bond.",
+                ]}
+                interval={3000}
+                className="text-red-500"
+              />
+            </h1>
 
-        {/* Mobile menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-neutral-100 px-5 py-4 space-y-1">
-            {[["Features", "#features"], ["How It Works", "#how-it-works"], ["For Who", "#for-who"]].map(([label, href]) => (
-              <a
-                key={label}
-                href={href}
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-4 py-3 text-sm font-semibold text-neutral-700 rounded-xl hover:bg-orange-50 hover:text-orange-600 transition-colors"
+            <p className="text-xl sm:text-2xl text-neutral-600 max-w-3xl mb-10 leading-relaxed font-medium">
+              In Nigeria, buying a stolen gadget — <strong className="text-neutral-900 font-bold">even unknowingly</strong> — makes you an accessory to crime. TraceIt gives you legal protection and instant identity verification <strong className="text-orange-600 font-bold">before you spend a single Naira</strong>.
+            </p>
+
+            {/* INSTANT LIVE SEARCH BAR */}
+            <div className="max-w-3xl mb-10">
+              <form onSubmit={handleHeroSearchSubmit} className="relative">
+                <div className="flex flex-col sm:flex-row items-stretch gap-2.5 bg-white p-2.5 rounded-3xl border-2 border-orange-200 shadow-xl shadow-orange-100/60 hover:border-orange-400 transition-all">
+                  <div className="flex-1 flex items-center gap-3.5 px-4 py-2">
+                    <Search className="w-6 h-6 text-orange-500 shrink-0" />
+                    <input
+                      type="text"
+                      value={heroSearch}
+                      onChange={(e) => setHeroSearch(e.target.value)}
+                      placeholder="Enter IMEI or Serial Number to run instant status check..."
+                      className="w-full text-neutral-900 placeholder-neutral-400 text-base font-semibold focus:outline-none bg-transparent"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={searchLoading}
+                    className="bg-orange-500 hover:bg-orange-600 text-white font-black text-base px-8 py-4 rounded-2xl transition-all shadow-lg shadow-orange-200 flex items-center justify-center gap-2 shrink-0 disabled:opacity-50"
+                  >
+                    {searchLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                    Instant Verify
+                  </button>
+                </div>
+              </form>
+
+              {/* Live Search Result Inline */}
+              {searchResult && (
+                <div className="mt-4 bg-white border border-neutral-200 rounded-3xl p-6 shadow-xl animate-in fade-in zoom-in duration-200">
+                  {searchResult.found ? (
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${searchResult.status === 'stolen' ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-green-100 text-green-700 border border-green-200'}`}>
+                            {searchResult.status === 'stolen' ? '🚨 STOLEN / FLAGGED' : '✅ REGISTERED & CLEAN'}
+                          </span>
+                        </div>
+                        <h4 className="text-xl font-black text-neutral-900">{searchResult.brand} {searchResult.model}</h4>
+                        <p className="text-xs text-neutral-500 font-mono">SN/IMEI: {searchResult.serialNumber || searchResult.imei}</p>
+                      </div>
+                      <Link
+                        to={user ? "/dashboard" : "/register"}
+                        className="bg-orange-500 text-white text-xs font-bold px-5 py-3 rounded-xl hover:bg-orange-600 transition-colors shrink-0"
+                      >
+                        View Full History Certificate
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3 text-amber-800 text-sm">
+                      <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold text-neutral-900">No Registration Record Found for "{searchResult.serialNumber}"</p>
+                        <p className="text-xs text-neutral-600 mt-1">This device is not yet registered on TraceIt. Ask the owner to register it before you buy, or register it under your account once purchased!</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {searchError && (
+                <p className="text-xs text-red-500 mt-2 font-bold pl-4">{searchError}</p>
+              )}
+            </div>
+
+            {/* HERO CTA BUTTONS */}
+            <div className="flex flex-wrap items-center gap-4 mb-16">
+              <Link
+                to={user ? "/dashboard" : "/register"}
+                className="inline-flex items-center gap-3 bg-orange-500 text-white font-black text-lg px-9 py-4.5 rounded-2xl hover:bg-orange-600 transition-all shadow-xl shadow-orange-200 group"
               >
-                {label}
-              </a>
-            ))}
-            <div className="pt-3 border-t border-neutral-100 flex flex-col gap-2">
-              <Link to="/login" className="px-4 py-3 text-sm font-bold text-neutral-700 rounded-xl hover:bg-neutral-50 text-center">Sign In</Link>
-              <Link to={user ? "/dashboard" : "/register"} className="px-4 py-3 text-sm font-bold bg-orange-500 text-white rounded-xl text-center hover:bg-orange-600 transition-colors">
-                {user ? "Dashboard" : "Get Started Free"}
+                {user ? "Go to Dashboard" : "Register Your Device Free"}
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link
+                to="/features?tab=howItWorks"
+                className="inline-flex items-center gap-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold text-base px-7 py-4.5 rounded-2xl border border-neutral-200 transition-all"
+              >
+                See How It Works
+                <ChevronRight className="w-5 h-5 text-orange-500" />
               </Link>
             </div>
-          </div>
-        )}
-      </header>
 
-      <main>
-        {/* ── HERO ── */}
-        <section className="pt-32 pb-20 lg:pt-40 lg:pb-28 px-5 lg:px-8 overflow-hidden relative">
-          {/* Background accents */}
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-orange-50 rounded-full -translate-y-1/2 translate-x-1/2 -z-10" />
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-orange-50/50 rounded-full translate-y-1/2 -translate-x-1/2 -z-10" />
-
-          <div className="max-w-7xl mx-auto">
-            <div className="max-w-4xl">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 bg-orange-50 text-orange-600 border border-orange-200 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full mb-8">
-                <span className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" />
-                Nigeria's #1 Gadget Registry & Anti-Theft Platform
+            {/* TRUST BAR */}
+            <div className="flex flex-wrap gap-x-8 gap-y-3 pt-6 border-t border-neutral-200 text-xs sm:text-sm font-semibold text-neutral-600">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-600" /> NIMC NIN Verified Platform
               </div>
-
-              <h1 className="text-5xl lg:text-7xl font-black text-neutral-900 leading-[1.1] tracking-tight mb-7">
-                Don't Buy a Stolen{" "}
-                <WordCarousel
-                  words={["Phone", "Laptop", "iPad", "MacBook", "Tablet", "Gadget"]}
-                  interval={5000}
-                />
-                <br />
-                <span className="text-neutral-700">and End Up</span>{" "}
-                <WordCarousel
-                  words={[
-                    "in Police Custody.",
-                    "Behind Bars.",
-                    "with a Criminal Record.",
-                    "in Legal Trouble.",
-                    "in Court.",
-                    "Paying a Bail Bond.",
-                  ]}
-                  interval={5000}
-                />
-              </h1>
-
-              <p className="text-lg lg:text-xl text-neutral-500 max-w-2xl mb-6 leading-relaxed">
-                In Nigeria, buying a stolen phone or laptop — even unknowingly — can get you arrested, prosecuted, and held as an accessory to theft. TraceIt lets you verify any device's status in seconds, <strong className="text-neutral-700">before</strong> you hand over your money.
-              </p>
-
-              {/* Urgent warning pill */}
-              <div className="inline-flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-5 py-3.5 rounded-2xl mb-8 max-w-xl text-left">
-                <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5 text-red-500" />
-                <span>A 5-second check on TraceIt is <em>always</em> safer than a ₦50,000 bail bond or a police interrogation room. Check first — buy with confidence.</span>
+              <div className="flex items-center gap-2">
+                <Lock className="w-4 h-4 text-green-600" /> Paystack Encrypted
               </div>
-
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-16">
-                <Link
-                  to={user ? "/dashboard" : "/register"}
-                  className="inline-flex items-center gap-2.5 bg-orange-500 text-white font-bold text-base px-7 py-4 rounded-2xl hover:bg-orange-600 transition-all shadow-lg shadow-orange-200 group"
-                >
-                  {user ? "Go to Dashboard" : "Register Your Device Free"}
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <a
-                  href="#how-it-works"
-                  className="inline-flex items-center gap-2 text-neutral-600 font-semibold text-base px-5 py-4 hover:text-orange-500 transition-colors"
-                >
-                  See how it works
-                  <ChevronDown className="w-4 h-4" />
-                </a>
-              </div>
-
-              {/* Trust bar */}
-              <div className="flex flex-wrap gap-x-8 gap-y-3">
-                {[
-                  { icon: <CheckCircle2 className="w-4 h-4 text-green-500" />, text: "NIN Verified Identities" },
-                  { icon: <CheckCircle2 className="w-4 h-4 text-green-500" />, text: "Cloudinary Secured Media" },
-                  { icon: <CheckCircle2 className="w-4 h-4 text-green-500" />, text: "Paystack Payment Protected" },
-                  { icon: <CheckCircle2 className="w-4 h-4 text-green-500" />, text: "100% Nigerian Platform" },
-                ].map(({ icon, text }) => (
-                  <div key={text} className="flex items-center gap-2 text-sm text-neutral-500 font-medium">
-                    {icon}
-                    {text}
-                  </div>
-                ))}
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-green-600" /> Cloudinary Media Storage
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Stats bar */}
-            <div className="mt-20 grid grid-cols-2 lg:grid-cols-4 gap-px bg-neutral-100 rounded-2xl overflow-hidden border border-neutral-100">
+        {/* HERO STATS BAR (WHITE BACKGROUND) */}
+        <div className="w-full max-w-7xl mx-auto mt-16 pt-8 border-t border-neutral-200">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { value: 12000, suffix: "+", label: "Registered Gadgets" },
+              { value: 3400, suffix: "+", label: "NIN-Verified Users" },
+              { value: 850, suffix: "+", label: "Stolen Reports Solved" },
+              { value: 99.9, suffix: "%", label: "Platform Availability" },
+            ].map(({ value, suffix, label }) => (
+              <div key={label} className="bg-white border border-neutral-200 rounded-2xl p-5 text-center shadow-sm hover:border-orange-300 transition-colors">
+                <div className="text-2xl sm:text-3xl font-black text-orange-500 mb-1">
+                  <CountUp target={value} suffix={suffix} />
+                </div>
+                <div className="text-xs font-semibold text-neutral-500">{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── PROBLEM / SOLUTION SECTION ── */}
+      <section className="py-24 px-5 lg:px-8 bg-neutral-950 text-white relative overflow-hidden">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div>
+            <div className="text-xs font-black uppercase tracking-widest text-red-400 mb-5 flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4" /> The Legal Risk Nobody Tells You
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-black leading-tight mb-6">
+              Buying a stolen gadget
+              <span className="text-red-400"> can put you behind bars.</span>
+            </h2>
+            <p className="text-neutral-400 text-base sm:text-lg leading-relaxed mb-8">
+              Under Nigerian criminal law, buying or possessing a stolen device — even if you paid full price and bought it in good faith — makes you an accessory to theft. Police regularly raid markets and checkpoints to seize unverified devices. <strong className="text-white font-bold">Ignorance is not a defence under the law.</strong>
+            </p>
+            <div className="space-y-4">
               {[
-                { value: 12000, suffix: "+", label: "Devices Registered" },
-                { value: 3400, suffix: "+", label: "Verified Users" },
-                { value: 850, suffix: "+", label: "Theft Reports Filed" },
-                { value: 99, suffix: "%", label: "Platform Uptime" },
-              ].map(({ value, suffix, label }) => (
-                <div key={label} className="bg-white px-8 py-8 text-center">
-                  <div className="text-3xl lg:text-4xl font-black text-orange-500 mb-1">
-                    <CountUp target={value} suffix={suffix} />
+                "Buyers caught with stolen devices face police detention & prosecution",
+                "Paper receipts and seller stories are easily faked and hold zero legal weight",
+                "Police impound devices with no guarantee of return to innocent buyers",
+                "Technicians servicing stolen devices can be prosecuted as co-conspirators",
+              ].map((point) => (
+                <div key={point} className="flex items-start gap-3 text-neutral-300 text-sm font-medium">
+                  <div className="w-5 h-5 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <X className="w-3.5 h-3.5" />
                   </div>
-                  <div className="text-sm font-semibold text-neutral-500">{label}</div>
+                  {point}
                 </div>
               ))}
             </div>
           </div>
-        </section>
 
-        {/* ── PROBLEM / SOLUTION ── */}
-        <section className="py-20 px-5 lg:px-8 bg-neutral-950 text-white">
-          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <div className="text-xs font-black uppercase tracking-widest text-red-400 mb-5">⚠ The Real Risk Nobody Talks About</div>
-              <h2 className="text-4xl lg:text-5xl font-black leading-tight mb-6">
-                Buying a stolen gadget
-                <span className="text-red-400"> can land you in jail.</span>
-              </h2>
-              <p className="text-neutral-400 text-lg leading-relaxed mb-8">
-                Under Nigerian law, being found with stolen property — even if you "didn't know" — can make you an accessory to theft. Police regularly arrest buyers of stolen phones at markets, checkpoints, and repair shops. <strong className="text-white">Ignorance is not a legal defence.</strong>
-              </p>
-              <div className="space-y-4">
-                {[
-                  "Buyers arrested with stolen devices face criminal charges",
-                  "Receipts and 'seller stories' are easily faked and hold no legal weight",
-                  "Police impound devices with no guarantee of return — even to innocent buyers",
-                  "Technicians who service stolen phones can be prosecuted as accomplices",
-                ].map((point) => (
-                  <div key={point} className="flex items-start gap-3 text-neutral-300 text-sm font-medium">
-                    <div className="w-5 h-5 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 mt-0.5">
-                      <X className="w-3 h-3" />
-                    </div>
-                    {point}
-                  </div>
-                ))}
-              </div>
+          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-8 lg:p-10 shadow-2xl relative">
+            <div className="text-xs font-black uppercase tracking-widest text-orange-400 mb-5 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-orange-500" /> The Solution — Verify First, Buy Safe
             </div>
-            <div>
-              <div className="text-xs font-black uppercase tracking-widest text-orange-400 mb-5">✓ The Solution — Check Before You Buy</div>
-              <h2 className="text-4xl lg:text-5xl font-black leading-tight mb-6">
-                TraceIt is your
-                <span className="text-orange-500"> 5-second safety check</span>
-                {" "}before every purchase.
-              </h2>
-              <p className="text-neutral-400 text-lg leading-relaxed mb-8">
-                Just enter the device Serial Number or IMEI into TraceIt before you pay. In seconds, you'll know if the device is stolen, flagged, or clear — with a verified ownership history that no fake receipt can replicate.
-              </p>
-              <div className="space-y-4">
-                {[
-                  "Instantly see if a device has been reported stolen or lost",
-                  "View the full chain of verified previous owners",
-                  "Get a clean-check certificate before finalising any purchase",
-                  "Protect yourself legally — ignorance is not a defence, but a TraceIt check is",
-                ].map((point) => (
-                  <div key={point} className="flex items-start gap-3 text-neutral-300 text-sm font-medium">
-                    <div className="w-5 h-5 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center shrink-0 mt-0.5">
-                      <CheckCircle2 className="w-3 h-3" />
-                    </div>
-                    {point}
+            <h2 className="text-3xl sm:text-4xl font-black leading-tight mb-6 text-white">
+              TraceIt is your
+              <span className="text-orange-500"> 5-second legal defense</span>
+              {" "}before every purchase.
+            </h2>
+            <p className="text-neutral-400 text-sm sm:text-base leading-relaxed mb-8">
+              Just enter the device Serial Number or IMEI into TraceIt before paying. In seconds, you will know if the device is stolen, flagged, or clear — with an official digital ownership record.
+            </p>
+            <div className="space-y-4 mb-8">
+              {[
+                "Instantly check if a device is flagged stolen anywhere in Nigeria",
+                "View the complete chain of NIN-verified previous owners",
+                "Receive a digital Proof of Ownership Certificate upon transfer",
+                "Protect yourself legally — a TraceIt lookup establishes proof of due diligence",
+              ].map((point) => (
+                <div key={point} className="flex items-start gap-3 text-neutral-300 text-sm font-medium">
+                  <div className="w-5 h-5 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-orange-500" />
                   </div>
-                ))}
-              </div>
-              <div className="mt-8 bg-orange-500/10 border border-orange-500/30 rounded-2xl p-5 text-sm text-orange-200 font-semibold leading-relaxed">
-                💡 <strong className="text-orange-400">Pro tip:</strong> Always ask the seller for the device's Serial Number or IMEI before you meet them. If they hesitate or refuse — that's your first red flag.
-              </div>
+                  {point}
+                </div>
+              ))}
+            </div>
+            <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-4.5 text-xs sm:text-sm text-orange-200 font-semibold leading-relaxed">
+              💡 <strong className="text-orange-400">Pro tip:</strong> Always ask the seller for the device's Serial Number or IMEI before meeting them. If they hesitate or refuse — walk away.
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ── FEATURES ── */}
-        <section id="features" className="py-24 px-5 lg:px-8 bg-white">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center max-w-2xl mx-auto mb-16">
-              <div className="text-xs font-black uppercase tracking-widest text-orange-500 mb-4">Platform Features</div>
-              <h2 className="text-4xl lg:text-5xl font-black text-neutral-900 mb-5">
+      {/* ── DEDICATED FEATURES SECTION ── */}
+      <section className="py-24 px-5 lg:px-8 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-100 text-orange-600 text-xs font-bold uppercase tracking-widest mb-4">
+                <Zap className="w-3.5 h-3.5" /> Platform Capabilities
+              </div>
+              <h2 className="text-3xl sm:text-5xl font-black text-neutral-900">
                 Everything you need to own tech safely.
               </h2>
-              <p className="text-neutral-500 text-lg">
-                A complete gadget lifecycle management platform — from first registration to final transfer.
-              </p>
             </div>
+            <Link
+              to="/features?tab=features"
+              className="inline-flex items-center gap-2 bg-orange-50 hover:bg-orange-100 text-orange-600 font-bold text-sm px-6 py-3.5 rounded-2xl transition-colors shrink-0"
+            >
+              Explore All Dedicated Features <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {features.map((f, i) => (
-                <div
-                  key={i}
-                  className="group p-8 rounded-2xl border border-neutral-100 hover:border-orange-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 bg-white cursor-default"
-                >
-                  <div className={`w-12 h-12 ${f.bg} ${f.color} rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform`}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((f, i) => (
+              <div
+                key={i}
+                className="group p-8 rounded-3xl border border-neutral-200 hover:border-orange-300 hover:shadow-xl hover:shadow-orange-100/50 hover:-translate-y-1 transition-all duration-300 bg-white flex flex-col justify-between"
+              >
+                <div>
+                  <div className={`w-12 h-12 ${f.bg} ${f.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
                     {f.icon}
                   </div>
-                  <h3 className="text-lg font-black text-neutral-900 mb-2">{f.title}</h3>
-                  <p className="text-neutral-500 text-sm leading-relaxed font-medium">{f.description}</p>
+                  <h3 className="text-xl font-black text-neutral-900 mb-3">{f.title}</h3>
+                  <p className="text-neutral-500 text-sm leading-relaxed font-medium mb-6">{f.description}</p>
                 </div>
-              ))}
-            </div>
+                <Link
+                  to="/features?tab=features"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors"
+                >
+                  Learn details <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ── HOW IT WORKS ── */}
-        <section id="how-it-works" className="py-24 px-5 lg:px-8 bg-orange-50">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center max-w-2xl mx-auto mb-16">
-              <div className="text-xs font-black uppercase tracking-widest text-orange-500 mb-4">How It Works</div>
-              <h2 className="text-4xl lg:text-5xl font-black text-neutral-900 mb-5">
+      {/* ── HOW IT WORKS SECTION ── */}
+      <section className="py-24 px-5 lg:px-8 bg-neutral-50 border-y border-neutral-100">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-100 text-orange-600 text-xs font-bold uppercase tracking-widest mb-4">
+                <Sparkles className="w-3.5 h-3.5" /> Step-by-Step Workflow
+              </div>
+              <h2 className="text-3xl sm:text-5xl font-black text-neutral-900">
                 Up and running in 3 simple steps.
               </h2>
-              <p className="text-neutral-500 text-lg">
-                No technical knowledge required. If you can fill a form, you can use TraceIt.
-              </p>
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative">
-              {/* Connector line (desktop) */}
-              <div className="hidden lg:block absolute top-12 left-[calc(33.33%+1rem)] right-[calc(33.33%+1rem)] h-px bg-orange-200" />
-
-              {howItWorks.map((step, i) => (
-                <div key={i} className="relative bg-white rounded-2xl p-8 border border-orange-100 shadow-sm">
-                  <div className="w-12 h-12 bg-orange-500 text-white rounded-full flex items-center justify-center text-lg font-black mb-6">
-                    {step.step}
-                  </div>
-                  <h3 className="text-xl font-black text-neutral-900 mb-3">{step.title}</h3>
-                  <p className="text-neutral-500 font-medium leading-relaxed">{step.description}</p>
-                </div>
-              ))}
-            </div>
+            <Link
+              to="/features?tab=howItWorks"
+              className="inline-flex items-center gap-2 bg-white border border-neutral-200 hover:border-orange-300 text-neutral-700 hover:text-orange-600 font-bold text-sm px-6 py-3.5 rounded-2xl transition-all shadow-sm shrink-0"
+            >
+              View Full "How It Works" Guide <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
-        </section>
 
-        {/* ── FOR WHO ── */}
-        <section id="for-who" className="py-24 px-5 lg:px-8 bg-white">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center max-w-2xl mx-auto mb-16">
-              <div className="text-xs font-black uppercase tracking-widest text-orange-500 mb-4">Built For Everyone</div>
-              <h2 className="text-4xl lg:text-5xl font-black text-neutral-900 mb-5">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative">
+            {howItWorks.map((step, i) => (
+              <div key={i} className="relative bg-white rounded-3xl p-8 border border-neutral-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-12 h-12 bg-orange-500 text-white rounded-2xl flex items-center justify-center text-lg font-black mb-6 shadow-lg shadow-orange-200">
+                  {step.step}
+                </div>
+                <h3 className="text-xl font-black text-neutral-900 mb-3">{step.title}</h3>
+                <p className="text-neutral-500 font-medium text-sm leading-relaxed mb-6">{step.description}</p>
+                <Link to="/features?tab=howItWorks" className="text-xs font-bold text-orange-500 hover:underline flex items-center gap-1">
+                  Read step guide <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FOR WHO SECTION ── */}
+      <section className="py-24 px-5 lg:px-8 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-100 text-orange-600 text-xs font-bold uppercase tracking-widest mb-4">
+                <Users className="w-3.5 h-3.5" /> Tailored Ecosystem
+              </div>
+              <h2 className="text-3xl sm:text-5xl font-black text-neutral-900">
                 Who uses TraceIt?
               </h2>
-              <p className="text-neutral-500 text-lg">
-                Whether you own one phone or run a 10-store electronics chain, TraceIt has a plan designed for you.
-              </p>
             </div>
+            <Link
+              to="/features?tab=forWho"
+              className="inline-flex items-center gap-2 bg-orange-50 hover:bg-orange-100 text-orange-600 font-bold text-sm px-6 py-3.5 rounded-2xl transition-colors shrink-0"
+            >
+              Explore "For Who" Details <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {roles.map((role, i) => (
-                <div
-                  key={i}
-                  className={`p-8 rounded-2xl border-2 ${role.color} transition-all duration-300 hover:-translate-y-1 hover:shadow-xl`}
-                >
-                  <div className={`inline-flex items-center gap-2 ${role.badge} text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full mb-6`}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {roles.map((role, i) => (
+              <div
+                key={i}
+                className={`p-8 rounded-3xl border-2 ${role.color} transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between`}
+              >
+                <div>
+                  <div className={`inline-flex items-center gap-2 ${role.badge} text-xs font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full mb-6`}>
                     {role.icon}
                     <span>{role.title}</span>
                   </div>
                   <h3 className="text-xl font-black text-neutral-900 mb-2">{role.subtitle}</h3>
-                  <ul className="space-y-3 mt-5">
+                  <ul className="space-y-3 mt-5 mb-8">
                     {role.perks.map((perk) => (
                       <li key={perk} className="flex items-center gap-3 text-sm font-semibold text-neutral-600">
                         <CheckCircle2 className="w-4 h-4 text-orange-500 shrink-0" />
@@ -652,147 +625,176 @@ export default function Home() {
                       </li>
                     ))}
                   </ul>
-                  <Link
-                    to="/register"
-                    className="mt-8 flex items-center gap-2 text-sm font-black text-orange-500 hover:text-orange-600 transition-colors"
-                  >
-                    Sign up as {role.title} <ArrowRight className="w-4 h-4" />
-                  </Link>
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── TESTIMONIALS ── */}
-        <section className="py-24 px-5 lg:px-8 bg-neutral-50">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center max-w-2xl mx-auto mb-16">
-              <div className="text-xs font-black uppercase tracking-widest text-orange-500 mb-4">Real Stories</div>
-              <h2 className="text-4xl lg:text-5xl font-black text-neutral-900 mb-5">
-                Trusted by Nigerians.
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {testimonials.map((t, i) => (
-                <div key={i} className="bg-white rounded-2xl p-8 border border-neutral-100 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex gap-1 mb-5">
-                    {Array.from({ length: t.rating }).map((_, j) => (
-                      <Star key={j} className="w-4 h-4 text-orange-400 fill-orange-400" />
-                    ))}
-                  </div>
-                  <p className="text-neutral-700 text-sm leading-relaxed font-medium mb-6">"{t.text}"</p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-xs font-black">
-                      {t.avatar}
-                    </div>
-                    <div>
-                      <div className="text-sm font-black text-neutral-900">{t.name}</div>
-                      <div className="text-xs font-semibold text-neutral-400 flex items-center gap-1">
-                        <MapPin className="w-3 h-3" /> {t.role}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── FAQ ── */}
-        <section id="faq" className="py-24 px-5 lg:px-8 bg-white">
-          <div className="max-w-3xl mx-auto">
-            <div className="text-center mb-14">
-              <div className="text-xs font-black uppercase tracking-widest text-orange-500 mb-4">Got Questions?</div>
-              <h2 className="text-4xl lg:text-5xl font-black text-neutral-900 mb-4">Frequently Asked Questions</h2>
-              <p className="text-neutral-500 text-lg">Everything you need to know about TraceIt — honest, plain answers.</p>
-            </div>
-            <FaqList />
-          </div>
-        </section>
-
-        {/* ── CTA ── */}
-        <section className="py-24 px-5 lg:px-8 bg-orange-500 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-white rounded-full translate-y-1/2 -translate-x-1/2" />
-          </div>
-          <div className="max-w-4xl mx-auto text-center relative z-10">
-            <div className="text-xs font-black uppercase tracking-widest text-orange-100 mb-5">Don't Risk It — Check First, Buy Safe</div>
-            <h2 className="text-4xl lg:text-6xl font-black text-white mb-6 leading-tight">
-              A stolen gadget check<br />costs ₦500. A police case doesn't.
-            </h2>
-            <p className="text-orange-100 text-lg mb-10 max-w-2xl mx-auto">
-              Thousands of Nigerians have already avoided police trouble, recovered stolen devices, and sold their gadgets faster by using TraceIt. Join them — it takes less than 2 minutes to register.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                to={user ? "/dashboard" : "/register"}
-                className="inline-flex items-center gap-2.5 bg-white text-orange-600 font-black text-base px-8 py-4 rounded-2xl hover:bg-orange-50 transition-all shadow-2xl group"
-              >
-                {user ? "Open Dashboard" : "Get Started for Free"}
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link
-                to="/login"
-                className="inline-flex items-center gap-2 text-white font-bold text-base px-6 py-4 rounded-2xl border-2 border-white/30 hover:border-white/60 transition-all"
-              >
-                Sign in to my account
-              </Link>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      {/* ── FOOTER ── */}
-      <footer className="bg-neutral-950 text-neutral-400 py-16 px-5 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
-            <div className="md:col-span-2">
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-                  <ShieldCheck className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-lg font-black text-white tracking-tight">TraceIt</span>
+                <Link
+                  to="/features?tab=forWho"
+                  className="inline-flex items-center gap-2 text-sm font-black text-orange-500 hover:text-orange-600 transition-colors"
+                >
+                  Learn how TraceIt protects {role.title} <ArrowRight className="w-4 h-4" />
+                </Link>
               </div>
-              <p className="text-sm leading-relaxed max-w-xs">
-                Nigeria's verified national gadget registry — building a transparent, theft-free technology market, one device at a time.
-              </p>
-            </div>
-            <div>
-              <h4 className="text-white font-black text-sm mb-4 uppercase tracking-widest">Platform</h4>
-              <ul className="space-y-2.5">
-                {["Register Device", "Search Device", "Report Theft", "Verify Identity"].map((item) => (
-                  <li key={item}>
-                    <Link to="/register" className="text-sm hover:text-orange-400 transition-colors font-medium">{item}</Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-black text-sm mb-4 uppercase tracking-widest">Company</h4>
-              <ul className="space-y-2.5">
-                {["About TraceIt", "Contact Us", "Privacy Policy", "Terms of Service"].map((item) => (
-                  <li key={item}>
-                    <a href="#" className="text-sm hover:text-orange-400 transition-colors font-medium">{item}</a>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            ))}
           </div>
-          <div className="pt-8 border-t border-neutral-800 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-xs font-medium">
-              © {new Date().getFullYear()} TraceIt Registry — All Rights Reserved. A product of{" "}
-              <span className="text-orange-400 font-bold">Lala Technologies Nigeria Ltd.</span>
-            </p>
-            <div className="flex items-center gap-2">
-              <Lock className="w-3.5 h-3.5 text-green-400" />
-              <span className="text-xs font-semibold text-neutral-500">256-bit SSL Encrypted & NIN Verified Platform</span>
+        </div>
+      </section>
+
+      {/* ── MERCHANTS & INFLUENCERS SPOTLIGHT PREVIEW ── */}
+      <section className="py-20 px-5 lg:px-8 bg-neutral-950 text-white relative overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-8 hover:border-orange-500/50 transition-all">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/20 text-orange-400 text-xs font-bold uppercase tracking-widest mb-4">
+                <Building2 className="w-3.5 h-3.5" /> Verified Vendor Directory
+              </div>
+              <h3 className="text-2xl font-black text-white mb-3">Confirm Registered Merchants</h3>
+              <p className="text-neutral-400 text-sm leading-relaxed mb-6">
+                Search and confirm the identity of authorized phone stores, laptop sellers, and gadget dealers registered on the TraceIt National Registry before transacting.
+              </p>
+              <Link
+                to="/merchants"
+                className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs px-6 py-3 rounded-xl transition-colors shadow-lg shadow-orange-500/20"
+              >
+                Browse Merchant Directory <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-8 hover:border-orange-500/50 transition-all">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 text-xs font-bold uppercase tracking-widest mb-4">
+                <Sparkles className="w-3.5 h-3.5" /> Tech Advocates
+              </div>
+              <h3 className="text-2xl font-black text-white mb-3">Meet Our Brand Ambassadors</h3>
+              <p className="text-neutral-400 text-sm leading-relaxed mb-6">
+                See the top Nigerian tech creators, industry champions, and brand ambassadors backing TraceIt to make gadget theft a thing of the past.
+              </p>
+              <Link
+                to="/influencers"
+                className="inline-flex items-center gap-2 bg-white text-neutral-900 font-bold text-xs px-6 py-3 rounded-xl hover:bg-neutral-100 transition-colors shadow-lg"
+              >
+                Meet Ambassadors <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
           </div>
         </div>
-      </footer>
-    </div>
+      </section>
+
+      {/* ── TESTIMONIALS SECTION ── */}
+      <section className="py-24 px-5 lg:px-8 bg-neutral-50 border-t border-neutral-100">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <div className="text-xs font-black uppercase tracking-widest text-orange-500 mb-4">Real Stories</div>
+            <h2 className="text-4xl lg:text-5xl font-black text-neutral-900 mb-5">
+              Trusted by Nigerians.
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {[
+              {
+                name: "Emeka Okonkwo",
+                role: "Electronics Vendor, Lagos",
+                text: "TraceIt transformed how I run my shop. My customers now know every device I sell is clean and legitimate. Sales confidence went up 100%.",
+                avatar: "EO",
+              },
+              {
+                name: "Amina Bello",
+                role: "IT Professional, Abuja",
+                text: "I checked a used MacBook's serial number before buying — TraceIt showed it was flagged stolen. Saved me over ₦350,000. Amazing service.",
+                avatar: "AB",
+              },
+              {
+                name: "Chukwudi Eze",
+                role: "University Student, Enugu",
+                text: "My phone was stolen and I flagged it on TraceIt. A week later, a technician spotted it and I got it back. This platform is a game changer.",
+                avatar: "CE",
+              },
+            ].map((t, i) => (
+              <div key={i} className="bg-white rounded-3xl p-8 border border-neutral-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex gap-1 mb-5">
+                  {Array.from({ length: 5 }).map((_, j) => (
+                    <Star key={j} className="w-4 h-4 text-amber-400 fill-amber-400" />
+                  ))}
+                </div>
+                <p className="text-neutral-700 text-sm leading-relaxed font-medium mb-6">"{t.text}"</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-xs font-black">
+                    {t.avatar}
+                  </div>
+                  <div>
+                    <div className="text-sm font-black text-neutral-900">{t.name}</div>
+                    <div className="text-xs font-semibold text-neutral-400 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-orange-500" /> {t.role}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ SECTION ── */}
+      <section id="faq" className="py-24 px-5 lg:px-8 bg-white">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-14">
+            <div className="text-xs font-black uppercase tracking-widest text-orange-500 mb-4">Got Questions?</div>
+            <h2 className="text-4xl lg:text-5xl font-black text-neutral-900 mb-4">Frequently Asked Questions</h2>
+            <p className="text-neutral-500 text-lg">Everything you need to know about TraceIt — honest, plain answers.</p>
+          </div>
+          
+          <div className="space-y-3 mb-10">
+            {FAQ_ITEMS.map((item, i) => (
+              <FaqItem
+                key={i}
+                q={item.q}
+                a={item.a}
+                isOpen={openFaqIndex === i}
+                onClick={() => setOpenFaqIndex(openFaqIndex === i ? -1 : i)}
+              />
+            ))}
+          </div>
+
+          <div className="text-center">
+            <Link
+              to="/faq"
+              className="inline-flex items-center gap-2 bg-orange-50 hover:bg-orange-100 text-orange-600 font-black text-sm px-8 py-4 rounded-2xl transition-colors shadow-sm"
+            >
+              View Full FAQ Directory <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FINAL CTA SECTION ── */}
+      <section className="py-24 px-5 lg:px-8 bg-orange-500 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-white rounded-full translate-y-1/2 -translate-x-1/2" />
+        </div>
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <div className="text-xs font-black uppercase tracking-widest text-orange-100 mb-5">Don't Risk It — Check First, Buy Safe</div>
+          <h2 className="text-4xl lg:text-6xl font-black text-white mb-6 leading-tight">
+            A stolen gadget check<br />costs ₦500. A police case doesn't.
+          </h2>
+          <p className="text-orange-100 text-lg mb-10 max-w-2xl mx-auto">
+            Thousands of Nigerians have already avoided police trouble, recovered stolen devices, and sold their gadgets faster by using TraceIt. Join them — it takes less than 2 minutes to register.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              to={user ? "/dashboard" : "/register"}
+              className="inline-flex items-center gap-2.5 bg-white text-orange-600 font-black text-base px-8 py-4 rounded-2xl hover:bg-orange-50 transition-all shadow-2xl group"
+            >
+              {user ? "Open Dashboard" : "Get Started for Free"}
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-2 text-white font-bold text-base px-6 py-4 rounded-2xl border-2 border-white/30 hover:border-white/60 transition-all"
+            >
+              Sign in to my account
+            </Link>
+          </div>
+        </div>
+      </section>
+    </PublicLayout>
   );
 }

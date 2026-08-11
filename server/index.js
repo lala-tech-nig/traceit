@@ -19,8 +19,13 @@ import adRoutes from './routes/adRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import referralRoutes from './routes/referralRoutes.js';
 import verificatorRoutes from './routes/verificatorRoutes.js';
+import merchantRoutes from './routes/merchantRoutes.js';
+import influencerRoutes from './routes/influencerRoutes.js';
+import faqRoutes from './routes/faqRoutes.js';
+import contentRoutes from './routes/contentRoutes.js';
 import { startEmailScheduler } from './utils/emailScheduler.js';
 import { startBackupScheduler } from './utils/dbBackupService.js';
+import { seedDynamicData } from './utils/seedDynamicData.js';
 
 dotenv.config();
 
@@ -42,6 +47,10 @@ app.use('/api/ads', adRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/verificator', verificatorRoutes);
+app.use('/api/merchants', merchantRoutes);
+app.use('/api/influencers', influencerRoutes);
+app.use('/api/faqs', faqRoutes);
+app.use('/api/content', contentRoutes);
 
 app.get('/', (req, res) => {
     res.send('TraceIt API is running...');
@@ -52,6 +61,9 @@ const startServer = async () => {
     try {
         await connectDB();
         
+        // Seed default dynamic data if database collections are empty
+        await seedDynamicData();
+
         // Start automated email scheduler & automated daily 12 AM Nigeria time DB backup scheduler
         startEmailScheduler();
         startBackupScheduler();

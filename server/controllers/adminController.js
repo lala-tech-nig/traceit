@@ -18,6 +18,8 @@ import {
     sendActivationReminderEmail,
     sendReEngagementEmail,
     sendCustomEmail,
+    sendNinVerifiedEmail,
+    sendNinUnverifiableEmail,
 } from '../utils/emailService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -181,10 +183,34 @@ export const approveUser = async (req, res) => {
                 }
             }
 
+            // Trigger NIN approval & step-by-step gadget upload email to user (non-blocking)
+            sendNinVerifiedEmail(user).catch(err => console.error('[EMAIL] NIN verified email failed:', err.message));
+
             res.json({ message: 'User approved successfully' });
         } else {
             res.status(404).json({ message: 'User not found' });
         }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Reach out to user if NIN is unverifiable
+// @route   POST /api/admin/users/:id/nin-unverifiable
+// @access  Private/Admin
+export const reachOutUnverifiableNIN = async (req, res) => {
+    try {
+        const { reasonNotes } = req.body;
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Send unverifiable NIN reach-out email
+        await sendNinUnverifiableEmail(user, reasonNotes);
+
+        res.json({ message: `Notification email sent successfully to ${user.email}` });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
